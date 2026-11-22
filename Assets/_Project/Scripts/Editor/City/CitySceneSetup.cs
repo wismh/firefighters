@@ -81,6 +81,30 @@ namespace _Project.Editor.City
             EditorSceneManager.MarkSceneDirty(network.gameObject.scene);
         }
 
+        [MenuItem("Tools/City/Rebuild Fires")]
+        public static void RebuildFires()
+        {
+            var blocks = GameObject.Find("City/Blocks").transform;
+            foreach (var fire in blocks.GetComponentsInChildren<BuildingFire>(true))
+            {
+                Object.DestroyImmediate(fire.gameObject);
+            }
+
+            AddFires(EnsureLayout(), blocks);
+            EditorSceneManager.MarkSceneDirty(blocks.gameObject.scene);
+        }
+
+        private static void AddFires(CityLayout layout, Transform blocks)
+        {
+            VfxMaterialUpgrade.Upgrade();
+            // Own random stream: changing the fire count does not reshuffle the buildings.
+            var random = new System.Random(layout.seed + 7919);
+            foreach (var building in BuildingFireBuilder.PickBuildings(blocks, layout.burningBuildings, random))
+            {
+                BuildingFireBuilder.AddFire(building, random);
+            }
+        }
+
         private static CityLayout EnsureLayout()
         {
             Directory.CreateDirectory(ConfigFolder);
@@ -175,12 +199,13 @@ namespace _Project.Editor.City
 
             BuildStreetProps(layout, props, random);
             var views = BuildSignals(layout, signals);
+            AddFires(layout, blocks);
 
             // Signal lamps change colour at runtime through a property block, so they stay out of batching.
             var lamps = new HashSet<GameObject>(views.Select(v => v.transform.Find("Lamp").gameObject));
             foreach (var t in city.GetComponentsInChildren<Transform>(true))
             {
-                if (lamps.Contains(t.gameObject))
+                if (lamps.Contains(t.gameObject) || t.GetComponentInParent<BuildingFire>(true) != null)
                 {
                     continue;
                 }
