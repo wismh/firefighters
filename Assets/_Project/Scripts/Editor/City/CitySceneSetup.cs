@@ -57,6 +57,7 @@ namespace _Project.Editor.City
             CreatePlayer(layout);
             CreateSceneContext();
             FireHoseBuilder.Apply(layout);
+            MinimapBuilder.Apply(layout);
             CityLightingSetup.Apply(true);
 
             EditorSceneManager.MarkSceneDirty(scene);

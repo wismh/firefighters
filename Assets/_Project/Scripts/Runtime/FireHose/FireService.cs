@@ -31,6 +31,7 @@ namespace _Project.FireHose
         /// <summary>Raised when a building is put out; carries the number still burning.</summary>
         public event Action<int> FireOut;
 
+        public IReadOnlyList<BuildingFire> Fires => _fires;
         public int Total => _fires.Count;
         public int Burning { get; private set; }
 

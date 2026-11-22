@@ -49,6 +49,18 @@ namespace _Project.Player
         public bool IsDriving => _vehicle != null;
         public bool IsHosing => _reel != null;
 
+        /// <summary>What the minimap centres on: the car while driving, the body on foot.</summary>
+        public Transform MapFocus => IsDriving ? _vehicle.transform : walker.transform;
+
+        /// <summary>Where the player looks, as a yaw in degrees; the camera's in both modes.</summary>
+        public float Heading => cameraTransform.eulerAngles.y;
+
+        /// <summary>Speed of the driven car, m/s; 0 on foot.</summary>
+        public float DrivingSpeed => IsDriving ? Mathf.Abs(_vehicle.Controller.ForwardSpeed) : 0f;
+
+        /// <summary>The last fire truck the player drove or took the hose from; the minimap shows it on foot.</summary>
+        public Vehicle FireTruck { get; private set; }
+
         [Inject]
         public void Construct(PlayerInputs inputs, TrafficSystem traffic, FireService fires)
         {
@@ -147,6 +159,7 @@ namespace _Project.Player
 
             _reel = reel;
             _hintReel = null;
+            FireTruck = vehicle;
             reel.Take();
             nozzle.Show(true);
             hose.Attach(reel.AttachPoint, nozzle.HoseEnd, reel.Length);
@@ -189,6 +202,11 @@ namespace _Project.Player
             }
 
             _vehicle = vehicle;
+            if (vehicle.HoseReel != null)
+            {
+                FireTruck = vehicle;
+            }
+
             vehicle.SetMode(VehicleMode.Driven);
             _traffic.SetFocus(vehicle.transform, drivenRadius, vehicle);
             walker.gameObject.SetActive(false);
