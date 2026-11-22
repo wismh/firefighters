@@ -8,18 +8,19 @@ using UnityEngine.Rendering;
 namespace _Project.Editor.City
 {
     /// <summary>
-    /// Sets a building on fire: Epic Toon FX flames spread over the roof, tall flames on the roof edges,
-    /// fire bursting from street-side windows, a dark smoke column, embers and one flickering light.
+    /// Sets a building on fire, mostly from the bottom up: flames at the base of every wall, fire out of
+    /// windows that thins out with height, flames on the roof surface, a dark smoke column, embers and one
+    /// flickering light. Every flame is placed on the actual mesh (rays against a temporary mesh collider),
+    /// so nothing hangs in the air in front of porches or above pitched roofs.
     /// The effects are authored for 1–3 m props, so every system runs in local space with hierarchy
     /// scaling and is scaled up to the building.
     /// </summary>
     public static class BuildingFireBuilder
     {
         private const string Fx = "Assets/ThirdParty/EpicToonFX/Prefabs/Environment/";
-        private const string RoofFire = Fx + "Fire/Cartoon/Field Intense/FireFieldIntenseRed.prefab";
+        private const string GroundFire = Fx + "Fire/Cartoon/Field Intense/FireFieldIntenseRed.prefab";
         private const string TallFire = Fx + "Fire/Soft/SoftTallFire/SoftTallFireRed.prefab";
         private const string BodyFire = Fx + "Fire/Soft/SoftFireBig/SoftFireBigRed.prefab";
-        private const string WindowFire = Fx + "Fire/Spiky/Additive/SpikyFireAdditiveRed.prefab";
         private const string SmokeColumn = Fx + "Smoke/Dark/SmokeDark.prefab";
         private const string SmokeSoft = Fx + "Smoke/Dark/SmokeDarkSoft.prefab";
         private const string Embers = Fx + "Fireflies/FireFliesRed.prefab";
@@ -29,6 +30,11 @@ namespace _Project.Editor.City
         // Against a bright daytime sky additive flames burn out to white under HDR and bloom, so the
         // flames use alpha-blended copies (they stay orange) and the glows a dimmer additive copy.
         private const float GlowStrength = 0.4f;
+        private const float FloorHeight = 3.6f;
+        private const float WallSpacing = 3.8f;
+        private const int MaxWallFlames = 18;
+
+        private static readonly Vector3[] Sides = { Vector3.back, Vector3.forward, Vector3.left, Vector3.right };
 
         /// <summary>Adds the fire under the building. The building's front faces its local -Z.</summary>
         public static void AddFire(GameObject building, System.Random random)
@@ -38,64 +44,18 @@ namespace _Project.Editor.City
             var root = new GameObject("Fire").transform;
             root.SetParent(building.transform, false);
             var top = local.max.y;
-            var footprint = new Vector2(local.size.x, local.size.z);
 
-            // Roofs are often pitched: flames sit on the actual roof surface, found by a ray against a
-            // temporary mesh collider, not at the ridge height (they would float as flat streaks).
             var probe = building.AddComponent<MeshCollider>();
             probe.sharedMesh = building.GetComponent<MeshFilter>().sharedMesh;
-            float Roof(float x, float z) => RoofHeight(probe, building.transform, x, z, top);
-            // Porches, awnings and the ground are not the roof: skip spots that low.
-            bool OnRoof(float y) => y > top * 0.6f;
-
-            // Flames over the roof, on a grid that fits the footprint.
-            var columns = Mathf.Clamp(Mathf.RoundToInt(footprint.x / 6f), 1, 3);
-            var rows = Mathf.Clamp(Mathf.RoundToInt(footprint.y / 6f), 1, 3);
-            for (var cx = 0; cx < columns; cx++)
+            try
             {
-                for (var cz = 0; cz < rows; cz++)
-                {
-                    var x = Mathf.Lerp(local.min.x, local.max.x, (cx + 0.5f) / columns) + Jitter(random, 1f);
-                    var z = Mathf.Lerp(local.min.z, local.max.z, (cz + 0.5f) / rows) + Jitter(random, 1f);
-                    var y = Roof(x, z);
-                    if (OnRoof(y))
-                    {
-                        Spawn(RoofFire, root, new Vector3(x, y - 0.2f, z), 3.2f + Jitter(random, 0.4f));
-                    }
-                }
+                AddWallFire(building.transform, probe, local, root, random);
+                AddGroundFire(building.transform, probe, local, root, random);
+                AddRoofFire(building.transform, probe, local, root, random);
             }
-
-            // The main body of flames over the roof.
-            Spawn(BodyFire, root, new Vector3(local.center.x, Roof(local.center.x, local.center.z) - 0.5f,
-                local.center.z), 5f);
-
-            // Tall flames licking up along the street-side roof edge.
-            var tongues = Mathf.Clamp(Mathf.RoundToInt(footprint.x / 5f), 2, 4);
-            for (var i = 0; i < tongues; i++)
+            finally
             {
-                var x = Mathf.Lerp(local.min.x + 1.5f, local.max.x - 1.5f, (float)i / (tongues - 1)) +
-                        Jitter(random, 0.8f);
-                var z = local.min.z + 1.5f + (float)random.NextDouble() * Mathf.Min(4f, footprint.y * 0.4f);
-                var y = Roof(x, z);
-                if (!OnRoof(y))
-                {
-                    // Over a porch: move the flame back onto the roof.
-                    z = local.center.z;
-                    y = Roof(x, z);
-                }
-
-                Spawn(TallFire, root, new Vector3(x, y - 0.5f, z), 8f + Jitter(random, 1.5f));
-            }
-
-            Object.DestroyImmediate(probe);
-
-            // Fire bursting out of street-side windows on a few upper floors.
-            var windows = Mathf.Clamp(Mathf.RoundToInt(local.size.y / 6f), 2, 4);
-            for (var i = 0; i < windows; i++)
-            {
-                var x = Mathf.Lerp(local.min.x + 1.5f, local.max.x - 1.5f, (float)random.NextDouble());
-                var y = Mathf.Lerp(local.size.y * 0.3f, local.size.y * 0.85f, (float)random.NextDouble());
-                Spawn(WindowFire, root, new Vector3(x, y, local.min.z - 0.4f), 3.4f + Jitter(random, 0.4f));
+                Object.DestroyImmediate(probe);
             }
 
             // Smoke: one dark column and a softer, wider plume, leaning with a light wind.
@@ -104,10 +64,10 @@ namespace _Project.Editor.City
             smoke.transform.rotation = Quaternion.Euler(-78f, 25f, 0f);
             var plume = Spawn(SmokeSoft, root, center + new Vector3(2f, 1f, 1f), 6.5f);
             plume.transform.rotation = Quaternion.Euler(-80f, 25f, 0f);
+            Spawn(Embers, root, new Vector3(local.center.x, top * 0.6f, local.center.z), 8f);
 
-            Spawn(Embers, root, center + Vector3.up * 3f, 8f);
-
-            // Effects bring their own lights; one flickering light per building is enough.
+            // Effects bring their own lights; one flickering light per building is enough. It sits low in
+            // front of the building so the street and the facade glow orange.
             foreach (var light in root.GetComponentsInChildren<Light>(true))
             {
                 light.enabled = false;
@@ -115,16 +75,147 @@ namespace _Project.Editor.City
 
             var lightObject = new GameObject("FireLight");
             lightObject.transform.SetParent(root, false);
-            lightObject.transform.localPosition = new Vector3(local.center.x, top + 2f, local.min.z - 3f);
+            lightObject.transform.localPosition = new Vector3(local.center.x, Mathf.Min(4f, top * 0.4f),
+                local.min.z - 4f);
             var fireLight = lightObject.AddComponent<Light>();
             fireLight.type = LightType.Point;
             fireLight.color = new Color(1f, 0.5f, 0.15f);
-            fireLight.range = Mathf.Max(25f, local.size.y * 1.6f);
-            fireLight.intensity = 25f;
+            fireLight.range = 28f;
+            fireLight.intensity = 20f;
             fireLight.shadows = LightShadows.None;
 
             var fire = root.gameObject.AddComponent<BuildingFire>();
             fire.Setup(fireLight, renderers);
+        }
+
+        /// <summary>
+        /// Flames on all four walls, one storey at a time. The ground floor burns almost everywhere and the
+        /// chance falls with height, so the building burns from the bottom up.
+        /// </summary>
+        private static void AddWallFire(Transform building, Collider probe, Bounds local, Transform root,
+            System.Random random)
+        {
+            var spots = new List<(Vector3 position, int storey)>();
+            foreach (var side in Sides)
+            {
+                var along = side.x != 0f ? Vector3.forward : Vector3.right;
+                var min = Vector3.Dot(local.min, along) + 1.2f;
+                var max = Vector3.Dot(local.max, along) - 1.2f;
+                var count = Mathf.Max(1, Mathf.RoundToInt((max - min) / WallSpacing));
+                for (var i = 0; i < count; i++)
+                {
+                    var u = Mathf.Lerp(min, max, (i + 0.5f) / count) + Jitter(random, 0.6f);
+                    for (var storey = 0; ; storey++)
+                    {
+                        var y = 1.3f + storey * FloorHeight;
+                        if (y > local.max.y - 1.5f)
+                        {
+                            break;
+                        }
+
+                        var chance = storey == 0 ? 0.9f : Mathf.Lerp(0.5f, 0.15f, y / local.max.y);
+                        if (random.NextDouble() > chance)
+                        {
+                            continue;
+                        }
+
+                        if (TryWall(building, probe, local, side, along * u + Vector3.up * y, out var spot))
+                        {
+                            spots.Add((spot, storey));
+                        }
+                    }
+                }
+            }
+
+            // Keep the cost bounded on big buildings; ground-floor fire wins.
+            var chosen = spots.OrderBy(s => s.storey).ThenBy(_ => random.Next()).Take(MaxWallFlames);
+            foreach (var (position, storey) in chosen)
+            {
+                if (storey == 0)
+                {
+                    Spawn(BodyFire, root, position - Vector3.up * 0.8f, 3.2f + Jitter(random, 0.4f));
+                }
+                else
+                {
+                    Spawn(TallFire, root, position - Vector3.up * 1f, 4.5f + Jitter(random, 0.8f));
+                }
+            }
+        }
+
+        /// <summary>Burning ground along the front and the sides: a fire field just outside the walls.</summary>
+        private static void AddGroundFire(Transform building, Collider probe, Bounds local, Transform root,
+            System.Random random)
+        {
+            foreach (var side in new[] { Vector3.back, Vector3.left, Vector3.right })
+            {
+                var along = side.x != 0f ? Vector3.forward : Vector3.right;
+                var u = Mathf.Lerp(Vector3.Dot(local.min, along), Vector3.Dot(local.max, along),
+                    0.3f + (float)random.NextDouble() * 0.4f);
+                if (TryWall(building, probe, local, side, along * u + Vector3.up * 1f, out var spot))
+                {
+                    var ground = new Vector3(spot.x, 0.05f, spot.z) + side * 1.2f;
+                    Spawn(GroundFire, root, ground, 2.4f + Jitter(random, 0.3f));
+                }
+            }
+        }
+
+        /// <summary>Flames standing on the roof surface (pitched or flat), plus a few tall tongues.</summary>
+        private static void AddRoofFire(Transform building, Collider probe, Bounds local, Transform root,
+            System.Random random)
+        {
+            var top = local.max.y;
+            var columns = Mathf.Clamp(Mathf.RoundToInt(local.size.x / 6f), 1, 3);
+            var rows = Mathf.Clamp(Mathf.RoundToInt(local.size.z / 6f), 1, 3);
+            var tongues = 0;
+            for (var cx = 0; cx < columns; cx++)
+            {
+                for (var cz = 0; cz < rows; cz++)
+                {
+                    var x = Mathf.Lerp(local.min.x, local.max.x, (cx + 0.5f) / columns) + Jitter(random, 1f);
+                    var z = Mathf.Lerp(local.min.z, local.max.z, (cz + 0.5f) / rows) + Jitter(random, 1f);
+                    var y = RoofHeight(probe, building, x, z, top);
+                    // Porches, awnings and the ground are not the roof.
+                    if (y < top * 0.6f)
+                    {
+                        continue;
+                    }
+
+                    var spot = new Vector3(x, y - 0.4f, z);
+                    if (tongues < 2 && random.NextDouble() < 0.5)
+                    {
+                        Spawn(TallFire, root, spot, 6.5f + Jitter(random, 1f));
+                        tongues++;
+                    }
+                    else
+                    {
+                        Spawn(BodyFire, root, spot, 3.6f + Jitter(random, 0.5f));
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Casts from outside the building toward one wall at a local aim point (its coordinate along the
+        /// side's normal is ignored). Returns a spot just outside the wall surface that was hit.
+        /// </summary>
+        private static bool TryWall(Transform building, Collider probe, Bounds local, Vector3 side, Vector3 aim,
+            out Vector3 spot)
+        {
+            var outward = Vector3.Scale(local.extents, side).magnitude + 4f;
+            var start = new Vector3(
+                side.x != 0f ? local.center.x : aim.x,
+                aim.y,
+                side.z != 0f ? local.center.z : aim.z) + side * outward;
+            var ray = new Ray(building.TransformPoint(start), building.TransformDirection(-side));
+            if (!probe.Raycast(ray, out var hit, outward + 2f) ||
+                Vector3.Dot(building.InverseTransformDirection(hit.normal), side) < 0.6f)
+            {
+                spot = default;
+                return false;
+            }
+
+            spot = building.InverseTransformPoint(hit.point) + side * 0.6f;
+            return true;
         }
 
         /// <summary>Local roof height at (x, z): a downward ray against the building mesh.</summary>
@@ -245,20 +336,38 @@ namespace _Project.Editor.City
             }
         }
 
-        /// <summary>Picks burning buildings: tall enough, in different blocks, spread over the city.</summary>
+        /// <summary>
+        /// Picks burning buildings, one per block, spread over the city. Low buildings (houses, shops,
+        /// garages) read best on fire, so blocks offer one of those; towers only when no low one is left.
+        /// </summary>
         public static List<GameObject> PickBuildings(Transform blocksRoot, int count, System.Random random)
         {
+            const float minHeight = 6f;
+            const float maxLowHeight = 15f;
             var candidates = new List<GameObject>();
+            var fallback = new List<GameObject>();
             foreach (Transform block in blocksRoot)
             {
-                var tall = block.GetComponentsInChildren<BoxCollider>(true)
+                var buildings = block.GetComponentsInChildren<BoxCollider>(true)
                     .Select(c => c.gameObject)
-                    .Where(g => g.name.StartsWith("Building_") && g.GetComponent<Renderer>().bounds.size.y > 11f)
+                    .Where(g => g.name.StartsWith("Building_"))
+                    .Select(g => (building: g, height: g.GetComponent<Renderer>().bounds.size.y))
+                    .Where(b => b.height > minHeight)
                     .ToList();
-                if (tall.Count > 0)
+                var low = buildings.Where(b => b.height <= maxLowHeight).ToList();
+                if (low.Count > 0)
                 {
-                    candidates.Add(tall[random.Next(tall.Count)]);
+                    candidates.Add(low[random.Next(low.Count)].building);
                 }
+                else if (buildings.Count > 0)
+                {
+                    fallback.Add(buildings.OrderBy(b => b.height).First().building);
+                }
+            }
+
+            if (candidates.Count < count)
+            {
+                candidates.AddRange(fallback);
             }
 
             var picked = new List<GameObject>();
