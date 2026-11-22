@@ -18,6 +18,7 @@ namespace _Project.Player
             Jump = _map.FindAction("Jump", true);
             Sprint = _map.FindAction("Sprint", true);
             Interact = _map.FindAction("Interact", true);
+            Attack = _map.FindAction("Attack", true);
         }
 
         public InputAction Move { get; }
@@ -25,6 +26,7 @@ namespace _Project.Player
         public InputAction Jump { get; }
         public InputAction Sprint { get; }
         public InputAction Interact { get; }
+        public InputAction Attack { get; }
 
         /// <summary>Look delta in degrees for this frame; mouse is per-pixel, stick is per-second.</summary>
         public Vector2 LookDelta(float mouseSensitivity, float stickSpeed)

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using _Project.FireHose;
 using _Project.Vehicles;
 using UnityEditor;
 using UnityEngine;
@@ -145,6 +146,10 @@ namespace _Project.Editor.City
 
                 var vehicle = root.AddComponent<Vehicle>();
                 vehicle.Setup(body, controller, exit, cameraTarget, bodyBounds.size.z, bodyBounds.size.x);
+                if (source.name.Contains("fire_truck"))
+                {
+                    vehicle.SetHoseReel(AddHoseReel(root, bodyBounds));
+                }
 
                 var path = $"{OutputFolder}/{name}.prefab";
                 var saved = PrefabUtility.SaveAsPrefabAsset(root, path);
@@ -154,6 +159,28 @@ namespace _Project.Editor.City
             {
                 Object.DestroyImmediate(root);
             }
+        }
+
+        /// <summary>A red drum on the right side near the back; the hose leaves it just outside the body collider.</summary>
+        private static FireHoseReel AddHoseReel(GameObject root, Bounds bodyBounds)
+        {
+            var attach = new GameObject("HoseReel").transform;
+            attach.SetParent(root.transform, false);
+            attach.localPosition = new Vector3(bodyBounds.max.x + 0.12f, bodyBounds.min.y + bodyBounds.size.y * 0.35f,
+                bodyBounds.min.z + 1.4f);
+
+            var drum = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            drum.name = "Drum";
+            Object.DestroyImmediate(drum.GetComponent<Collider>());
+            drum.transform.SetParent(attach, false);
+            drum.transform.SetLocalPositionAndRotation(new Vector3(-0.06f, 0f, 0f), Quaternion.Euler(0f, 0f, 90f));
+            drum.transform.localScale = new Vector3(0.7f, 0.08f, 0.7f);
+            drum.GetComponent<MeshRenderer>().sharedMaterial =
+                CitySceneSetup.EnsureFlatMaterial("HoseReel", new Color(0.75f, 0.12f, 0.1f));
+
+            var reel = root.AddComponent<FireHoseReel>();
+            reel.Setup(attach);
+            return reel;
         }
 
         private static Bounds Encapsulate(IReadOnlyList<Renderer> renderers)

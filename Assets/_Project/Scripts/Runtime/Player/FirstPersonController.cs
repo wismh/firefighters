@@ -20,6 +20,9 @@ namespace _Project.Player
         private Vector3 _horizontalVelocity;
         private float _verticalVelocity;
         private float _pitch;
+        private Transform _leashAnchor;
+        private float _leashLength;
+        private bool _leashed;
 
         public Transform CameraPivot => cameraPivot;
 
@@ -27,6 +30,20 @@ namespace _Project.Player
         public void Construct(PlayerInputs inputs)
         {
             _inputs = inputs;
+        }
+
+        /// <summary>Keeps the body within <paramref name="length"/> metres (on the ground plane) of the anchor.</summary>
+        public void SetLeash(Transform anchor, float length)
+        {
+            _leashAnchor = anchor;
+            _leashLength = length;
+            _leashed = true;
+        }
+
+        public void ClearLeash()
+        {
+            _leashed = false;
+            _leashAnchor = null;
         }
 
         /// <summary>Moves the body without the CharacterController fighting the teleport.</summary>
@@ -68,7 +85,33 @@ namespace _Project.Player
                 _verticalVelocity += gravity * dt;
             }
 
-            character.Move((_horizontalVelocity + Vector3.up * _verticalVelocity) * dt);
+            var horizontal = _leashed ? ApplyLeash(dt) : _horizontalVelocity;
+            character.Move((horizontal + Vector3.up * _verticalVelocity) * dt);
+        }
+
+        /// <summary>At the end of the leash the outward part of the velocity is dropped; past it the body is pulled back.</summary>
+        private Vector3 ApplyLeash(float dt)
+        {
+            const float pullBackRate = 8f;
+            var offset = transform.position - _leashAnchor.position;
+            offset.y = 0f;
+            var distance = offset.magnitude;
+            if (distance < _leashLength - 0.1f)
+            {
+                return _horizontalVelocity;
+            }
+
+            var outward = offset / distance;
+            var along = Vector3.Dot(_horizontalVelocity, outward);
+            if (along > 0f)
+            {
+                _horizontalVelocity -= outward * along;
+            }
+
+            var overshoot = distance - _leashLength;
+            return overshoot > 0f
+                ? _horizontalVelocity - outward * Mathf.Min(overshoot * pullBackRate, overshoot / dt)
+                : _horizontalVelocity;
         }
     }
 }

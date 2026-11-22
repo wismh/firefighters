@@ -529,6 +529,8 @@ MonoBehaviour:
   length: 5.3768578
   width: 3.1594028
   knockoutSpeed: 4
+  hoseReel: {fileID: 0}
+  parkedOnStart: 0
 --- !u!1001 &4472326482116600775
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -23,7 +23,7 @@ namespace _Project.Editor.City
     public static class CitySceneSetup
     {
         private const string ConfigFolder = "Assets/_Project/Configurations/City";
-        private const string LayoutPath = ConfigFolder + "/CityLayout_Default.asset";
+        internal const string LayoutPath = ConfigFolder + "/CityLayout_Default.asset";
         private const string TrafficPath = ConfigFolder + "/TrafficSettings_Default.asset";
         private const string MaterialFolder = "Assets/_Project/Art/Materials";
         private const string SignalMaterialPath = MaterialFolder + "/SignalLamp.mat";
@@ -56,6 +56,7 @@ namespace _Project.Editor.City
             var network = CreateTraffic(layout, traffic, views);
             CreatePlayer(layout);
             CreateSceneContext();
+            FireHoseBuilder.Apply(layout);
             CityLightingSetup.Apply(true);
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -551,7 +552,7 @@ namespace _Project.Editor.City
             return views;
         }
 
-        private static Material EnsureFlatMaterial(string name, Color color)
+        internal static Material EnsureFlatMaterial(string name, Color color)
         {
             var path = $"{MaterialFolder}/{name}.mat";
             var material = AssetDatabase.LoadAssetAtPath<Material>(path);
@@ -648,7 +649,7 @@ namespace _Project.Editor.City
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private static void SetRefs(Object target, params (string field, Object value)[] refs)
+        internal static void SetRefs(Object target, params (string field, Object value)[] refs)
         {
             var so = new SerializedObject(target);
             foreach (var (field, value) in refs)

@@ -1,4 +1,5 @@
 using System;
+using _Project.FireHose;
 using UnityEngine;
 
 namespace _Project.Vehicles
@@ -16,6 +17,10 @@ namespace _Project.Vehicles
         [SerializeField] private float length = 5f;
         [SerializeField] private float width = 3f;
         [SerializeField] private float knockoutSpeed = 4f;
+        [Tooltip("Optional: only fire trucks carry a hose reel.")]
+        [SerializeField] private FireHoseReel hoseReel;
+        [Tooltip("Placed in the scene as a parked car instead of being spawned by traffic.")]
+        [SerializeField] private bool parkedOnStart;
 
         private Vector3[] _wheelBasePositions;
         private Quaternion[] _wheelBaseRotations;
@@ -32,6 +37,9 @@ namespace _Project.Vehicles
         public float Length => length;
         public float Width => width;
         public float HalfLength => length * 0.5f;
+
+        /// <summary>The fire hose reel, or null for cars without one.</summary>
+        public FireHoseReel HoseReel => hoseReel;
         public float Speed => body.isKinematic ? TrafficSpeed : body.linearVelocity.magnitude;
 
         /// <summary>Speed set by the traffic system while kinematic.</summary>
@@ -46,6 +54,11 @@ namespace _Project.Vehicles
             cameraTarget = camera;
             length = vehicleLength;
             width = vehicleWidth;
+        }
+
+        public void SetHoseReel(FireHoseReel reel)
+        {
+            hoseReel = reel;
         }
 
         public void SetMode(VehicleMode mode)
@@ -109,6 +122,14 @@ namespace _Project.Vehicles
             {
                 _wheelBasePositions[i] = wheels[i].visual.localPosition;
                 _wheelBaseRotations[i] = wheels[i].visual.localRotation;
+            }
+        }
+
+        private void Start()
+        {
+            if (parkedOnStart)
+            {
+                SetMode(VehicleMode.Parked);
             }
         }
 

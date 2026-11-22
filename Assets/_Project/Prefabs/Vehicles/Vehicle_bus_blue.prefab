@@ -396,6 +396,8 @@ MonoBehaviour:
   length: 9.042289
   width: 3.443529
   knockoutSpeed: 4
+  hoseReel: {fileID: 0}
+  parkedOnStart: 0
 --- !u!1 &7432996642393148418
 GameObject:
   m_ObjectHideFlags: 0

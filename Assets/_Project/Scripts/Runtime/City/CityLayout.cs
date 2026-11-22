@@ -25,6 +25,8 @@ namespace _Project.City
         public int seed = 12345;
         [Tooltip("How many buildings are on fire.")]
         [Min(0)] public int burningBuildings = 4;
+        [Tooltip("Parked fire trucks next to the burning buildings closest to the player start.")]
+        [Min(0)] public int parkedFireTrucks = 2;
 
         [Header("Road tiles (SimpleTown)")]
         public GameObject roadStraightHalf;

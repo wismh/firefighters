@@ -1,3 +1,4 @@
+using _Project.FireHose;
 using _Project.Traffic;
 using _Project.Vehicles;
 using UnityEngine;
@@ -7,8 +8,9 @@ using Zenject;
 namespace _Project.Player
 {
     /// <summary>
-    /// Switches the player between walking and driving: E next to any car (traffic or parked) takes it,
-    /// E while driving slowly gets out.
+    /// Switches the player between walking, driving and holding the fire hose: E next to any car (traffic or
+    /// parked) takes it, E while driving slowly gets out; E at a fire truck's reel takes or returns the hose,
+    /// and the left mouse button sprays water while it is in hand.
     /// </summary>
     public sealed class PlayerModeController : MonoBehaviour
     {
@@ -22,6 +24,13 @@ namespace _Project.Player
         [SerializeField] private float maxExitSpeed = 4f;
         [SerializeField] private float onFootRadius = 0.6f;
         [SerializeField] private float drivenRadius = 2.5f;
+        [SerializeField] private WaterNozzle nozzle;
+        [SerializeField] private HoseRope hose;
+        [SerializeField] private float reelRadius = 3f;
+        [Tooltip("The hose drops out of the hands when the truck ends up this much farther than the hose reaches.")]
+        [SerializeField] private float hoseBreakMargin = 3f;
+        [Tooltip("Part of the hose length the player can walk away; the rest is slack that sags to the ground.")]
+        [SerializeField] private float leashFraction = 0.92f;
 
         private readonly Collider[] _nearby = new Collider[MaxNearbyColliders];
 
@@ -29,8 +38,12 @@ namespace _Project.Player
         private TrafficSystem _traffic;
         private Vehicle _vehicle;
         private Vehicle _hintVehicle;
+        private FireHoseReel _hintReel;
+        private FireHoseReel _reel;
+        private bool _atReel;
 
         public bool IsDriving => _vehicle != null;
+        public bool IsHosing => _reel != null;
 
         [Inject]
         public void Construct(PlayerInputs inputs, TrafficSystem traffic)
@@ -41,6 +54,7 @@ namespace _Project.Player
 
         private void Start()
         {
+            nozzle.Show(false);
             vehicleCamera.Stop();
             AttachCameraToHead();
             _traffic.SetFocus(walker.transform, onFootRadius, null);
@@ -56,11 +70,86 @@ namespace _Project.Player
                 return;
             }
 
-            _hintVehicle = FindNearestVehicle();
-            if (_hintVehicle != null && _inputs.Interact.WasPressedThisFrame())
+            if (IsHosing)
+            {
+                UpdateHosing();
+                return;
+            }
+
+            var nearest = FindNearestVehicle();
+            _hintReel = FindFreeReel(nearest);
+            _hintVehicle = _hintReel == null ? nearest : null;
+            if (!_inputs.Interact.WasPressedThisFrame())
+            {
+                return;
+            }
+
+            if (_hintReel != null)
+            {
+                TakeHose(nearest, _hintReel);
+            }
+            else if (_hintVehicle != null)
             {
                 Enter(_hintVehicle);
             }
+        }
+
+        private void UpdateHosing()
+        {
+            var flowing = _inputs.Attack.IsPressed() && Cursor.lockState == CursorLockMode.Locked;
+            nozzle.SetFlowing(flowing);
+
+            var distance = HorizontalDistance(walker.transform.position, _reel.AttachPoint.position);
+            _atReel = distance < reelRadius;
+            var lost = !_reel.isActiveAndEnabled || distance > _reel.Length + hoseBreakMargin;
+            if (lost || (_atReel && _inputs.Interact.WasPressedThisFrame()))
+            {
+                ReturnHose();
+            }
+        }
+
+        private FireHoseReel FindFreeReel(Vehicle vehicle)
+        {
+            if (vehicle == null || vehicle.HoseReel == null || vehicle.HoseReel.IsTaken)
+            {
+                return null;
+            }
+
+            var reel = vehicle.HoseReel;
+            var near = HorizontalDistance(walker.transform.position, reel.AttachPoint.position) < reelRadius;
+            return near ? reel : null;
+        }
+
+        private void TakeHose(Vehicle vehicle, FireHoseReel reel)
+        {
+            if (vehicle.Mode == VehicleMode.Traffic)
+            {
+                _traffic.Detach(vehicle);
+            }
+
+            _reel = reel;
+            _hintReel = null;
+            reel.Take();
+            nozzle.Show(true);
+            hose.Attach(reel.AttachPoint, nozzle.HoseEnd, reel.Length);
+            walker.SetLeash(reel.AttachPoint, reel.Length * leashFraction);
+        }
+
+        private void ReturnHose()
+        {
+            nozzle.Show(false);
+            hose.Detach();
+            walker.ClearLeash();
+            _reel.Return();
+            _reel = null;
+            _atReel = false;
+        }
+
+        private static float HorizontalDistance(Vector3 a, Vector3 b)
+        {
+            a.y = 0f;
+            b.y = 0f;
+            return Vector3.Distance(a, b);
         }
 
         private void UpdateDriving()
@@ -176,14 +265,35 @@ namespace _Project.Player
 
         private void OnGUI()
         {
-            var text = IsDriving
-                ? "WASD — кермо, Space — ручник, E — вийти (на малій швидкості)"
-                : _hintVehicle != null
-                    ? "E — сісти в машину"
-                    : "WASD — ходити, Shift — біг, Space — стрибок";
             var style = GUI.skin.label;
             style.fontSize = 18;
-            GUI.Label(new Rect(20f, Screen.height - 40f, 900f, 30f), text, style);
+            GUI.Label(new Rect(20f, Screen.height - 40f, 900f, 30f), HintText(), style);
+            if (IsHosing)
+            {
+                GUI.Label(new Rect(Screen.width * 0.5f - 5f, Screen.height * 0.5f - 13f, 20f, 26f), "+", style);
+            }
+        }
+
+        private string HintText()
+        {
+            if (IsDriving)
+            {
+                return "WASD — кермо, Space — ручник, E — вийти (на малій швидкості)";
+            }
+
+            if (IsHosing)
+            {
+                return _atReel
+                    ? "ЛКМ — вода, E — повернути шланг"
+                    : "ЛКМ — вода; щоб сісти в машину, поверни шланг на котушку";
+            }
+
+            if (_hintReel != null)
+            {
+                return "E — взяти шланг";
+            }
+
+            return _hintVehicle != null ? "E — сісти в машину" : "WASD — ходити, Shift — біг, Space — стрибок";
         }
     }
 }
