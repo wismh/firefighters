@@ -20,6 +20,8 @@ namespace _Project.City
         [SerializeField] private FlameSpot[] flames;
         [SerializeField] private ParticleSystem[] smoke;
         [SerializeField] private ParticleSystem[] embers;
+        [Tooltip("World height of the building's base; set by the builder.")]
+        [SerializeField] private float baseY;
         [SerializeField] private Color sootTint = new Color(0.42f, 0.36f, 0.33f);
         [SerializeField] private float flickerSpeed = 7f;
         [SerializeField] private float flickerAmount = 0.35f;
@@ -31,6 +33,10 @@ namespace _Project.City
         [SerializeField] private float douseRate = 1f;
         [Tooltip("How far behind the wet surface a flame still gets water (under a porch, eaves, a window), metres.")]
         [SerializeField] private float douseDepth = 2.5f;
+        [Tooltip("A roof flame gets water from any wet spot of the building within this horizontal distance...")]
+        [SerializeField] private float roofRadius = 7f;
+        [Tooltip("...if the spot is at least this high above the building's base (the upper wall, not the ground).")]
+        [SerializeField] private float roofMinHeight = 2.5f;
         [Tooltip("The smallest a flame shrinks to before it goes out, as a part of its full size.")]
         [SerializeField] private float minVisualScale = 0.25f;
 
@@ -72,6 +78,11 @@ namespace _Project.City
             flames = flameSpots;
             smoke = smokeSystems;
             embers = emberSystems;
+            baseY = float.MaxValue;
+            foreach (var r in renderers)
+            {
+                baseY = Mathf.Min(baseY, r.bounds.min.y);
+            }
         }
 
         /// <summary>
@@ -90,7 +101,7 @@ namespace _Project.City
             for (var i = 0; i < flames.Length; i++)
             {
                 var flame = flames[i];
-                var reach = Reach(flame.root.position, point, normal);
+                var reach = Reach(flame, point, normal);
                 if (reach <= 0f)
                 {
                     continue;
@@ -115,7 +126,22 @@ namespace _Project.City
         /// surface it is the plain distance; behind it (a flame under a porch or eaves) the water soaks in up to
         /// douseDepth, counted along the surface plus half the depth. The far side of a wall gets nothing.
         /// </summary>
-        public float Reach(Vector3 flame, Vector3 point, Vector3 normal)
+        public float Reach(FlameSpot flame, Vector3 point, Vector3 normal)
+        {
+            var reach = SurfaceReach(flame.root.position, point, normal);
+            if (!flame.onRoof || point.y - baseY < roofMinHeight)
+            {
+                return reach;
+            }
+
+            // The roof is hard to see from the street, so water on the upper wall below a roof flame counts too.
+            var flat = flame.root.position - point;
+            flat.y = 0f;
+            var t = flat.magnitude / roofRadius;
+            return t >= 1f ? reach : Mathf.Max(reach, 1f - t * t);
+        }
+
+        private float SurfaceReach(Vector3 flame, Vector3 point, Vector3 normal)
         {
             var offset = flame - point;
             var depth = -Vector3.Dot(offset, normal);

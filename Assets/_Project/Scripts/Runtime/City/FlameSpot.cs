@@ -11,6 +11,8 @@ namespace _Project.City
     public sealed class FlameSpot
     {
         public Transform root;
+        [Tooltip("Roof flames also go out from water on the upper walls below them.")]
+        public bool onRoof;
         public float baseScale = 1f;
         public ParticleSystem[] systems;
 

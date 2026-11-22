@@ -53,7 +53,8 @@ namespace _Project.Editor.City
             building.GetComponent<BoxCollider>().enabled = false;
             AddWallFire(building.transform, probe, local, root, random);
             AddGroundFire(building.transform, probe, local, root, random);
-            AddRoofFire(building.transform, probe, local, root, random);
+            var roofFlames = new HashSet<Transform>();
+            AddRoofFire(building.transform, probe, local, root, random, roofFlames);
 
             // Smoke: one dark column and a softer, wider plume, leaning with a light wind.
             var center = new Vector3(local.center.x, top, local.center.z);
@@ -82,7 +83,7 @@ namespace _Project.Editor.City
             fireLight.shadows = LightShadows.None;
 
             var fire = root.gameObject.AddComponent<BuildingFire>();
-            var flames = ReachableFlames(fire, CollectFlames(root), WorldBounds(renderers));
+            var flames = ReachableFlames(fire, CollectFlames(root, roofFlames), WorldBounds(renderers));
             fire.Setup(fireLight, renderers, flames, Systems(root, SmokeColumn, SmokeSoft), Systems(root, Embers));
         }
 
@@ -149,7 +150,7 @@ namespace _Project.Editor.City
                         {
                             var direction = Quaternion.Euler(-pitch, yaw + dy, 0f) * Vector3.forward;
                             var hit = WaterArc.Trace(shooter, direction * speed, Physics.gravity, out var h, out _);
-                            if (hit && fire.Reach(target, h.point, h.normal) >= minReach)
+                            if (hit && fire.Reach(flame, h.point, h.normal) >= minReach)
                             {
                                 return true;
                             }
@@ -184,12 +185,13 @@ namespace _Project.Editor.City
         }
 
         /// <summary>Every flame effect under the fire root, with the scale it was placed at.</summary>
-        private static FlameSpot[] CollectFlames(Transform root)
+        private static FlameSpot[] CollectFlames(Transform root, ISet<Transform> roofFlames)
         {
             return Instances(root, GroundFire, TallFire, BodyFire)
                 .Select(t => new FlameSpot
                 {
                     root = t,
+                    onRoof = roofFlames.Contains(t),
                     baseScale = t.localScale.x,
                     systems = t.GetComponentsInChildren<ParticleSystem>(true)
                         .Where(s => s.gameObject.activeSelf).ToArray(),
@@ -281,7 +283,7 @@ namespace _Project.Editor.City
 
         /// <summary>Flames standing on the roof surface (pitched or flat), plus a few tall tongues.</summary>
         private static void AddRoofFire(Transform building, Collider probe, Bounds local, Transform root,
-            System.Random random)
+            System.Random random, ISet<Transform> roofFlames)
         {
             var top = local.max.y;
             var columns = Mathf.Clamp(Mathf.RoundToInt(local.size.x / 6f), 1, 3);
@@ -303,12 +305,12 @@ namespace _Project.Editor.City
                     var spot = new Vector3(x, y - 0.4f, z);
                     if (tongues < 2 && random.NextDouble() < 0.5)
                     {
-                        Spawn(TallFire, root, spot, 6.5f + Jitter(random, 1f));
+                        roofFlames.Add(Spawn(TallFire, root, spot, 6.5f + Jitter(random, 1f)).transform);
                         tongues++;
                     }
                     else
                     {
-                        Spawn(BodyFire, root, spot, 3.6f + Jitter(random, 0.5f));
+                        roofFlames.Add(Spawn(BodyFire, root, spot, 3.6f + Jitter(random, 0.5f)).transform);
                     }
                 }
             }
