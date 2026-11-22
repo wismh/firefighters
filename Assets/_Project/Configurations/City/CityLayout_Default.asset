@@ -16,6 +16,7 @@ MonoBehaviour:
   blocksZ: 5
   blockSize: 50
   seed: 12345
+  burningBuildings: 4
   roadStraightHalf: {fileID: 100000, guid: d80c7433031fdee44bf3910c4b046ce7, type: 3}
   roadCrossingHalf: {fileID: 100000, guid: bf68fcd7394a7cd4c884d1e6e7091cb0, type: 3}
   roadQuarterCorner: {fileID: 100000, guid: bcedf905ea37bbb4e91144395428c9c2, type: 3}
@@ -99,3 +100,6 @@ MonoBehaviour:
   - {fileID: 100000, guid: d640ca176c8536040aded4c2dc0fe3fa, type: 3}
   - {fileID: 100000, guid: b315fa776449eec44a8591af7353afe8, type: 3}
   - {fileID: 100000, guid: dc289fda3255c0c45a5b68320f21b278, type: 3}
+  signGantry: {fileID: 100000, guid: b0ae0fe2fed20c0408778e0f303dd613, type: 3}
+  signArmPlusX: {fileID: 100000, guid: 377e21b3c1c2cfb458ce46bfde9c791a, type: 3}
+  signArmMinusX: {fileID: 100000, guid: 8dce7dbdd30c01f49a3ff28478a7315e, type: 3}

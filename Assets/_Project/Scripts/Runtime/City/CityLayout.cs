@@ -44,6 +44,14 @@ namespace _Project.City
         public GameObject[] trees;
         public GameObject[] sidewalkProps;
 
+        [Header("Road signs over the road (SimpleTown)")]
+        [Tooltip("Gantry: poles at local x = 0 and x = 17, spans the whole road.")]
+        public GameObject signGantry;
+        [Tooltip("Cantilever: pole at the origin, arm along local +X.")]
+        public GameObject signArmPlusX;
+        [Tooltip("Cantilever: pole at the origin, arm along local -X.")]
+        public GameObject signArmMinusX;
+
         public float Period => RoadWidth + blockSize;
         public int NodesX => blocksX + 1;
         public int NodesZ => blocksZ + 1;

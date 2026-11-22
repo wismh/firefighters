@@ -27,6 +27,10 @@ namespace _Project.Vehicles
         public float ForwardSpeed => Vector3.Dot(body.linearVelocity, transform.forward);
         public VehicleWheel[] Wheels => wheels;
 
+        /// <summary>Velocity before this physics step, so a knocked-over prop can give back what the hit took.</summary>
+        public Vector3 PreStepVelocity { get; private set; }
+        public Vector3 PreStepAngularVelocity { get; private set; }
+
         /// <summary>Editor-time wiring from the vehicle prefab builder. Torques scale with the vehicle mass.</summary>
         public void Setup(Rigidbody rigidbody, VehicleWheel[] vehicleWheels, float massScale)
         {
@@ -57,6 +61,8 @@ namespace _Project.Vehicles
                 return;
             }
 
+            PreStepVelocity = body.linearVelocity;
+            PreStepAngularVelocity = body.angularVelocity;
             var speed = ForwardSpeed;
             var speedFactor = Mathf.Clamp01(Mathf.Abs(speed) / maxSpeed);
             var steerAngle = _steer * Mathf.Lerp(maxSteerAngle, highSpeedSteerAngle, speedFactor);

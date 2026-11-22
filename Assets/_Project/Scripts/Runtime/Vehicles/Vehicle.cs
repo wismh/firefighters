@@ -1,4 +1,5 @@
 using System;
+using _Project.City;
 using _Project.FireHose;
 using UnityEngine;
 
@@ -22,12 +23,16 @@ namespace _Project.Vehicles
         [Tooltip("Placed in the scene as a parked car instead of being spawned by traffic.")]
         [SerializeField] private bool parkedOnStart;
 
+        private Collider[] _colliders;
         private Vector3[] _wheelBasePositions;
         private Quaternion[] _wheelBaseRotations;
         private float _wheelSpin;
 
         /// <summary>Raised when a driven car hits this traffic car hard enough to knock it out of traffic.</summary>
         public event Action<Vehicle> KnockedOut;
+
+        /// <summary>Raised when this car knocks a street prop over: the contact point and the velocity lost.</summary>
+        public event Action<Vector3, Vector3> PropHit;
 
         public VehicleMode Mode { get; private set; } = VehicleMode.Traffic;
         public Rigidbody Body => body;
@@ -79,6 +84,20 @@ namespace _Project.Vehicles
 
             controller.enabled = !kinematic;
             controller.SetDriver(mode == VehicleMode.Driven);
+            ApplyLayer();
+        }
+
+        /// <summary>
+        /// The car just knocked a prop over: the hit already stopped it against the prop's static collider, so it
+        /// gets its speed before the hit back, less what the prop took.
+        /// </summary>
+        public void HitProp(Vector3 point, float speedKept)
+        {
+            var before = controller.PreStepVelocity;
+            var after = before * speedKept;
+            body.linearVelocity = after;
+            body.angularVelocity = controller.PreStepAngularVelocity;
+            PropHit?.Invoke(point, before - after);
         }
 
         /// <summary>Kinematic move along the lane; wheels spin by the travelled distance.</summary>
@@ -115,6 +134,7 @@ namespace _Project.Vehicles
 
         private void Awake()
         {
+            ApplyLayer();
             var wheels = controller.Wheels;
             _wheelBasePositions = new Vector3[wheels.Length];
             _wheelBaseRotations = new Quaternion[wheels.Length];
@@ -131,6 +151,17 @@ namespace _Project.Vehicles
             if (parkedOnStart && Mode == VehicleMode.Traffic)
             {
                 SetMode(VehicleMode.Parked);
+            }
+        }
+
+        // Traffic cars sit on their own layer, which ignores knocked-over props.
+        private void ApplyLayer()
+        {
+            _colliders ??= GetComponentsInChildren<Collider>(true);
+            var layer = Mode == VehicleMode.Traffic ? PhysicsLayers.Traffic : PhysicsLayers.Default;
+            for (var i = 0; i < _colliders.Length; i++)
+            {
+                _colliders[i].gameObject.layer = layer;
             }
         }
 

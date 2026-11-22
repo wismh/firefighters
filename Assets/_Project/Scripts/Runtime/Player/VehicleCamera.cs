@@ -1,3 +1,4 @@
+using _Project.City;
 using _Project.Vehicles;
 using UnityEngine;
 using Zenject;
@@ -13,7 +14,8 @@ namespace _Project.Player
         [SerializeField] private float recenterSpeed = 90f;
         [SerializeField] private float mouseSensitivity = 0.15f;
         [SerializeField] private float stickLookSpeed = 140f;
-        [SerializeField] private LayerMask obstacleMask = ~0;
+        [Tooltip("Knocked-over props are left out, or the camera jumps over every lamp lying under the car.")]
+        [SerializeField] private LayerMask obstacleMask = ~(1 << PhysicsLayers.Debris);
 
         private PlayerInputs _inputs;
         private Vehicle _target;

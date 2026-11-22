@@ -27,6 +27,7 @@ namespace _Project.Editor.City
         private const string TrafficPath = ConfigFolder + "/TrafficSettings_Default.asset";
         private const string MaterialFolder = "Assets/_Project/Art/Materials";
         private const string SignalMaterialPath = MaterialFolder + "/SignalLamp.mat";
+        private const string DebrisMaterialPath = MaterialFolder + "/Debris.physicMaterial";
         private const string ScenePath = "Assets/_Project/Scenes/MainScene.unity";
         private const string InputPath = "Assets/_Project/InputSystem_Actions.inputactions";
         private const string Town = "Assets/ThirdParty/SimpleTown/Prefabs/";
@@ -34,6 +35,13 @@ namespace _Project.Editor.City
         private const float BuildingGap = 1f;
         private const float LampSpacing = 25f;
         private const float SidewalkPropOffset = CityLayout.HalfRoad - 1.1f;
+        // Road sign poles stand this far along a block from its corner, at least 9 m from every lamp and bin.
+        private const float SignAlongBlock = 28f;
+        private const float SignChance = 0.35f;
+        private const float GantryChance = 0.3f;
+        private const float GantrySpan = 17f;
+        // Sign panels in SimpleTown face local -Z, like its buildings.
+        private static readonly Vector3 SignFront = Vector3.back;
 
         [MenuItem("Tools/City/Setup Main Scene (full rebuild)")]
         public static void SetupMainScene()
@@ -113,6 +121,7 @@ namespace _Project.Editor.City
             var layout = AssetDatabase.LoadAssetAtPath<CityLayout>(LayoutPath);
             if (layout != null)
             {
+                EnsureRoadSigns(layout);
                 return layout;
             }
 
@@ -180,6 +189,21 @@ namespace _Project.Editor.City
                 .ToArray();
         }
 
+        // Layouts made before road signs existed get them filled in, the rest of the layout untouched.
+        private static void EnsureRoadSigns(CityLayout layout)
+        {
+            if (layout.signGantry != null)
+            {
+                return;
+            }
+
+            layout.signGantry = Load(Town + "Props/Prop_Roadsign_01");
+            layout.signArmPlusX = Load(Town + "Props/Prop_Roadsign_02");
+            layout.signArmMinusX = Load(Town + "Props/Prop_Roadsign_03");
+            EditorUtility.SetDirty(layout);
+            AssetDatabase.SaveAssetIfDirty(layout);
+        }
+
         private static List<TrafficLightView> BuildCity(CityLayout layout)
         {
             var random = new System.Random(layout.seed);
@@ -200,6 +224,7 @@ namespace _Project.Editor.City
             }
 
             BuildStreetProps(layout, props, random);
+            BuildRoadSigns(layout, Child(city, "RoadSigns"));
             var views = BuildSignals(layout, signals);
             AddFires(layout, blocks);
 
@@ -207,7 +232,9 @@ namespace _Project.Editor.City
             var lamps = new HashSet<GameObject>(views.Select(v => v.transform.Find("Lamp").gameObject));
             foreach (var t in city.GetComponentsInChildren<Transform>(true))
             {
-                if (lamps.Contains(t.gameObject) || t.GetComponentInParent<BuildingFire>(true) != null)
+                // Props the car can knock over have to move, so they cannot be static batched either.
+                if (lamps.Contains(t.gameObject) || t.GetComponentInParent<BuildingFire>(true) != null ||
+                    t.GetComponentInParent<KnockableProp>(true) != null)
                 {
                     continue;
                 }
@@ -389,7 +416,7 @@ namespace _Project.Editor.City
                     Mathf.Lerp(yardMin.y, yardMax.y, (float)random.NextDouble()));
                 var instance = (GameObject)PrefabUtility.InstantiatePrefab(tree, block);
                 instance.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, random.Next(360), 0f));
-                AddPoleCollider(instance, 0.5f, 4f);
+                AddCapsule(instance, Vector3.zero, 0.5f, 4f);
             }
         }
 
@@ -482,7 +509,10 @@ namespace _Project.Editor.City
         {
             var lamp = (GameObject)PrefabUtility.InstantiatePrefab(layout.streetLamp, parent);
             lamp.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, YawToFace(layout.streetLamp, towardRoad), 0f));
-            AddPoleCollider(lamp, 0.2f, 6f);
+            // The pole of lamp_mesh stands 1.4 m off its pivot; the head overhangs the other way.
+            AddCapsule(lamp, new Vector3(0f, 0f, 1.375f), 0.4f, 7.9f);
+            AddBox(lamp, new Vector3(0f, 8.1f, -0.2f), new Vector3(0.6f, 0.9f, 3.4f));
+            AddKnockable(lamp, 120f, 6f);
         }
 
         private static void AddSidewalkProp(CityLayout layout, Transform parent, System.Random random, Vector3 position)
@@ -496,6 +526,117 @@ namespace _Project.Editor.City
             var prop = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
             prop.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, random.Next(4) * 90f, 0f));
             prop.AddComponent<BoxCollider>();
+            if (prefab.name.Contains("hydrant"))
+            {
+                AddKnockable(prop, 150f, 5f);
+            }
+            else
+            {
+                AddKnockable(prop, 30f, 2f);
+            }
+        }
+
+        private static void BuildRoadSigns(CityLayout layout, Transform parent)
+        {
+            // Own random stream, so adding signs does not reshuffle the props placed from the shared one.
+            var random = new System.Random(layout.seed + 4481);
+            for (var ix = 0; ix < layout.NodesX; ix++)
+            {
+                for (var iz = 0; iz < layout.NodesZ; iz++)
+                {
+                    var node = layout.NodePosition(ix, iz);
+                    if (layout.IsNode(ix + 1, iz))
+                    {
+                        TryAddRoadSign(layout, parent, random, node, Vector3.right);
+                    }
+
+                    if (layout.IsNode(ix, iz + 1))
+                    {
+                        TryAddRoadSign(layout, parent, random, node, Vector3.forward);
+                    }
+                }
+            }
+        }
+
+        private static void TryAddRoadSign(CityLayout layout, Transform parent, System.Random random, Vector3 node,
+            Vector3 along)
+        {
+            if (random.NextDouble() > SignChance)
+            {
+                return;
+            }
+
+            // The sign serves one direction of travel and faces the cars coming towards it.
+            var travel = random.Next(2) == 0 ? along : -along;
+            var face = -travel;
+            var center = node + along * (CityLayout.HalfRoad + SignAlongBlock);
+            // Turns the panel's local front to the oncoming cars.
+            var rotation = Quaternion.LookRotation(-face) * Quaternion.Inverse(Quaternion.LookRotation(-SignFront));
+            // Where the model's local +X ends up in the world.
+            var localX = rotation * Vector3.right;
+            if (random.NextDouble() < GantryChance)
+            {
+                var sign = (GameObject)PrefabUtility.InstantiatePrefab(layout.signGantry, parent);
+                sign.transform.SetPositionAndRotation(center - localX * (GantrySpan * 0.5f), rotation);
+                AddCapsule(sign, Vector3.zero, 0.4f, 10f);
+                AddCapsule(sign, new Vector3(GantrySpan, 0f, 0f), 0.4f, 10f);
+                AddBox(sign, new Vector3(GantrySpan * 0.5f, 8.4f, 0f), new Vector3(GantrySpan + 0.8f, 3.6f, 0.4f));
+                AddKnockable(sign, 400f, 8f);
+                return;
+            }
+
+            // Cantilever: the pole on the right-hand sidewalk of the travel direction, the arm over the lane.
+            var right = Vector3.Cross(Vector3.up, travel);
+            var armPlusX = Vector3.Dot(localX, -right) > 0f;
+            var prefab = armPlusX ? layout.signArmPlusX : layout.signArmMinusX;
+            var arm = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+            arm.transform.SetPositionAndRotation(center + right * SidewalkPropOffset, rotation);
+            AddCapsule(arm, Vector3.zero, 0.4f, 9.4f);
+            var armSide = armPlusX ? 1f : -1f;
+            AddBox(arm, new Vector3(armSide * 3.9f, 8.25f, 0f), new Vector3(8.4f, 2.3f, 0.4f));
+            AddKnockable(arm, 150f, 6f);
+        }
+
+        private static void AddKnockable(GameObject instance, float mass, float breakSpeed)
+        {
+            instance.AddComponent<KnockableProp>().Setup(mass, breakSpeed, 0.9f, EnsureDebrisMaterial());
+        }
+
+        private static PhysicsMaterial EnsureDebrisMaterial()
+        {
+            var material = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(DebrisMaterialPath);
+            if (material != null)
+            {
+                return material;
+            }
+
+            Directory.CreateDirectory(MaterialFolder);
+            // Minimum wins over the default Average, so a car on top of a fallen lamp slides instead of sticking.
+            material = new PhysicsMaterial("Debris")
+            {
+                dynamicFriction = 0.1f,
+                staticFriction = 0.1f,
+                bounciness = 0f,
+                frictionCombine = PhysicsMaterialCombine.Minimum,
+                bounceCombine = PhysicsMaterialCombine.Minimum,
+            };
+            AssetDatabase.CreateAsset(material, DebrisMaterialPath);
+            return material;
+        }
+
+        private static void AddCapsule(GameObject instance, Vector3 basePoint, float radius, float height)
+        {
+            var capsule = instance.AddComponent<CapsuleCollider>();
+            capsule.radius = radius;
+            capsule.height = height;
+            capsule.center = basePoint + new Vector3(0f, height * 0.5f, 0f);
+        }
+
+        private static void AddBox(GameObject instance, Vector3 center, Vector3 size)
+        {
+            var box = instance.AddComponent<BoxCollider>();
+            box.center = center;
+            box.size = size;
         }
 
         private static List<TrafficLightView> BuildSignals(CityLayout layout, Transform parent)
@@ -528,7 +669,9 @@ namespace _Project.Editor.City
                         light.name = $"Signal_{ix}_{iz}_{dir}";
                         light.transform.SetPositionAndRotation(position,
                             Quaternion.Euler(0f, YawToFace(layout.trafficLight, towardRoad), 0f));
-                        AddPoleCollider(light, 0.25f, 6f);
+                        AddCapsule(light, new Vector3(0f, 0f, -0.15f), 0.4f, 7.9f);
+                        AddBox(light, new Vector3(0f, 7.1f, 0.2f), new Vector3(1.1f, 1.5f, 1f));
+                        AddKnockable(light, 200f, 8f);
 
                         var bounds = WorldBounds(light);
                         var reach = Mathf.Max(0.6f, Vector3.Dot(bounds.center - position, towardRoad) * 2f - 0.6f);
@@ -544,7 +687,7 @@ namespace _Project.Editor.City
                         lampRenderer.shadowCastingMode = ShadowCastingMode.Off;
 
                         var view = light.AddComponent<TrafficLightView>();
-                        view.Setup(new Vector2Int(ix, iz), dir, lampRenderer);
+                        view.Setup(new Vector2Int(ix, iz), dir, lampRenderer, light.GetComponent<KnockableProp>());
                         views.Add(view);
                     }
                 }
@@ -704,14 +847,6 @@ namespace _Project.Editor.City
             }
 
             return Vector3.SignedAngle(overhang, direction, Vector3.up);
-        }
-
-        private static void AddPoleCollider(GameObject instance, float radius, float height)
-        {
-            var capsule = instance.AddComponent<CapsuleCollider>();
-            capsule.radius = radius;
-            capsule.height = height;
-            capsule.center = new Vector3(0f, height * 0.5f, 0f);
         }
     }
 }
