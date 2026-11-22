@@ -188,7 +188,6 @@ namespace _Project.Editor.City
         /// <summary>Every flame effect under the fire root, with the scale it was placed at.</summary>
         private static FlameSpot[] CollectFlames(Transform root, ISet<Transform> roofFlames)
         {
-            var markerPrefab = EnsureMarkerPrefab();
             return Instances(root, GroundFire, TallFire, BodyFire).ToList()
                 .Select(t => new FlameSpot
                 {
@@ -197,92 +196,26 @@ namespace _Project.Editor.City
                     baseScale = t.localScale.x,
                     systems = t.GetComponentsInChildren<ParticleSystem>(true)
                         .Where(s => s.gameObject.activeSelf).ToArray(),
-                    marker = AddMarker(markerPrefab, root, t),
+                    marker = AddMarker(root, t),
                 })
                 .ToArray();
         }
 
-        /// <summary>A sibling of the flame (not a child, so it does not shrink with it), hidden until needed.</summary>
-        private static GameObject AddMarker(GameObject prefab, Transform root, Transform flame)
+        /// <summary>
+        /// Marker over one of the last flames, made of the same effects as the fire itself so it reads as part of
+        /// it: a thin dark smoke wisp rising a few metres (how a smouldering spot is found from afar) and a few
+        /// drifting embers. A sibling of the flame, not a child, so it does not shrink with it; hidden until needed.
+        /// </summary>
+        private static GameObject AddMarker(Transform root, Transform flame)
         {
-            var marker = (GameObject)PrefabUtility.InstantiatePrefab(prefab, root);
+            var marker = new GameObject("LastFlameMarker");
+            marker.transform.SetParent(root, false);
             marker.transform.localPosition = flame.localPosition;
+            var wisp = Spawn(SmokeSoft, marker.transform, Vector3.up * 0.6f, 2.2f);
+            wisp.transform.localRotation = Quaternion.Euler(-85f, 25f, 0f);
+            Spawn(Embers, marker.transform, Vector3.up * 0.8f, 1.6f);
             marker.SetActive(false);
             return marker;
-        }
-
-        /// <summary>
-        /// Marker over one of the last flames: bright sparks shooting a few metres up (seen over hedges, cars and
-        /// round corners) and a soft orange pulse at the flame.
-        /// </summary>
-        private static GameObject EnsureMarkerPrefab()
-        {
-            const string path = "Assets/_Project/Prefabs/Fx/FlameMarker.prefab";
-            var go = new GameObject("FlameMarker");
-            try
-            {
-                var sparks = go.AddComponent<ParticleSystem>();
-                var main = sparks.main;
-                main.loop = true;
-                main.startLifetime = new ParticleSystem.MinMaxCurve(0.9f, 1.4f);
-                main.startSpeed = new ParticleSystem.MinMaxCurve(3.5f, 6f);
-                main.startSize = new ParticleSystem.MinMaxCurve(0.1f, 0.18f);
-                main.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.85f, 0.3f), new Color(1f, 0.5f, 0.1f));
-                main.gravityModifier = 0.25f;
-                main.simulationSpace = ParticleSystemSimulationSpace.World;
-                main.maxParticles = 80;
-                var emission = sparks.emission;
-                emission.rateOverTime = 30f;
-                var shape = sparks.shape;
-                shape.shapeType = ParticleSystemShapeType.Cone;
-                shape.angle = 10f;
-                shape.radius = 0.3f;
-                shape.rotation = new Vector3(-90f, 0f, 0f);
-                var size = sparks.sizeOverLifetime;
-                size.enabled = true;
-                size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.2f));
-                var renderer = go.GetComponent<ParticleSystemRenderer>();
-                renderer.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(Materials + "Basics/circle_AB.mat");
-                renderer.renderMode = ParticleSystemRenderMode.Stretch;
-                renderer.velocityScale = 0.06f;
-                renderer.lengthScale = 1f;
-                renderer.shadowCastingMode = ShadowCastingMode.Off;
-
-                var glowObject = new GameObject("Pulse");
-                glowObject.transform.SetParent(go.transform, false);
-                glowObject.transform.localPosition = Vector3.up * 0.8f;
-                var glow = glowObject.AddComponent<ParticleSystem>();
-                var glowMain = glow.main;
-                glowMain.loop = true;
-                glowMain.startLifetime = 0.9f;
-                glowMain.startSpeed = 0f;
-                glowMain.startSize = 3f;
-                glowMain.startColor = new Color(1f, 0.55f, 0.15f, 0.8f);
-                glowMain.simulationSpace = ParticleSystemSimulationSpace.Local;
-                var glowEmission = glow.emission;
-                glowEmission.rateOverTime = 2.5f;
-                var glowShape = glow.shape;
-                glowShape.enabled = false;
-                var glowSize = glow.sizeOverLifetime;
-                glowSize.enabled = true;
-                glowSize.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.4f, 1f, 1.2f));
-                var glowColor = glow.colorOverLifetime;
-                glowColor.enabled = true;
-                var gradient = new Gradient();
-                gradient.SetKeys(
-                    new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-                    new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.3f), new GradientAlphaKey(0f, 1f) });
-                glowColor.color = gradient;
-                var glowRenderer = glowObject.GetComponent<ParticleSystemRenderer>();
-                glowRenderer.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(OwnMaterials + "FireGlowSoft_ADD.mat");
-                glowRenderer.shadowCastingMode = ShadowCastingMode.Off;
-
-                return PrefabUtility.SaveAsPrefabAsset(go, path);
-            }
-            finally
-            {
-                Object.DestroyImmediate(go);
-            }
         }
 
         private static ParticleSystem[] Systems(Transform root, params string[] sources)
