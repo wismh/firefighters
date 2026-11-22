@@ -279,10 +279,7 @@ namespace _Project.Editor.City
 
             var core = CreateSystem("Stream", muzzle, drop, rate: 260f, speed: (20.5f, 22.5f), size: (0.06f, 0.1f),
                 angle: 1f, growth: 5f, alpha: 0.95f);
-            var coreRenderer = core.GetComponent<ParticleSystemRenderer>();
-            coreRenderer.renderMode = ParticleSystemRenderMode.Stretch;
-            coreRenderer.velocityScale = 0.035f;
-            coreRenderer.lengthScale = 1.5f;
+            AddStreak(core, drop, 0.02f);
 
             var blobs = CreateSystem("Body", core.transform, body, rate: 70f, speed: (20f, 22.5f), size: (0.1f, 0.18f),
                 angle: 2f, growth: 7f, alpha: 0.5f);
@@ -297,11 +294,34 @@ namespace _Project.Editor.City
 
             var spray = CreateSystem("Spray", core.transform, drop, rate: 90f, speed: (13f, 21f), size: (0.04f, 0.09f),
                 angle: 5f, growth: 1.5f, alpha: 0.9f);
-            var sprayRenderer = spray.GetComponent<ParticleSystemRenderer>();
-            sprayRenderer.renderMode = ParticleSystemRenderMode.Stretch;
-            sprayRenderer.velocityScale = 0.03f;
-            sprayRenderer.lengthScale = 1f;
+            AddStreak(spray, drop, 0.015f);
             return core;
+        }
+
+        /// <summary>
+        /// Streaks the drops with short trails rather than stretched billboards: a stretched billboard draws its tail
+        /// behind the drop from the first frame, so fresh drops trailed back past the nozzle and out of the screen,
+        /// while a trail only covers the path the drop has flown and so always starts at the muzzle.
+        /// </summary>
+        private static void AddStreak(ParticleSystem system, Material material, float lifetime)
+        {
+            var trails = system.trails;
+            trails.enabled = true;
+            trails.mode = ParticleSystemTrailMode.PerParticle;
+            // A fraction of the drop's lifetime: 0.02 of 2 s is 0.04 s, under a metre at the stream's speed.
+            trails.lifetime = lifetime;
+            trails.minVertexDistance = 0.1f;
+            trails.dieWithParticles = true;
+            trails.sizeAffectsWidth = true;
+            trails.widthOverTrail = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.4f));
+            trails.inheritParticleColor = true;
+            trails.textureMode = ParticleSystemTrailTextureMode.Stretch;
+            var fade = new Gradient();
+            fade.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0f, 1f) });
+            trails.colorOverTrail = fade;
+            system.GetComponent<ParticleSystemRenderer>().trailMaterial = material;
         }
 
         private static ParticleSystem CreateSystem(string name, Transform parent, Material material, float rate,

@@ -1,3 +1,4 @@
+using _Project.FireHose;
 using UnityEngine;
 using Zenject;
 
@@ -20,8 +21,7 @@ namespace _Project.Player
         private Vector3 _horizontalVelocity;
         private float _verticalVelocity;
         private float _pitch;
-        private Transform _leashAnchor;
-        private float _leashLength;
+        private HoseRope _leash;
         private bool _leashed;
 
         public Transform CameraPivot => cameraPivot;
@@ -32,18 +32,17 @@ namespace _Project.Player
             _inputs = inputs;
         }
 
-        /// <summary>Keeps the body within <paramref name="length"/> metres (on the ground plane) of the anchor.</summary>
-        public void SetLeash(Transform anchor, float length)
+        /// <summary>Holds the body with a hose: it can walk until the hose is pulled taut, wherever the hose runs.</summary>
+        public void SetLeash(HoseRope hose)
         {
-            _leashAnchor = anchor;
-            _leashLength = length;
+            _leash = hose;
             _leashed = true;
         }
 
         public void ClearLeash()
         {
             _leashed = false;
-            _leashAnchor = null;
+            _leash = null;
         }
 
         /// <summary>Moves the body without the CharacterController fighting the teleport.</summary>
@@ -89,26 +88,29 @@ namespace _Project.Player
             character.Move((horizontal + Vector3.up * _verticalVelocity) * dt);
         }
 
-        /// <summary>At the end of the leash the outward part of the velocity is dropped; past it the body is pulled back.</summary>
+        /// <summary>
+        /// While the hose is taut, the velocity away from it is dropped; once it is stretched past a little give the
+        /// body is pulled back along it. The hose straightens at the same moment, so the stop reads as the hose's.
+        /// </summary>
         private Vector3 ApplyLeash(float dt)
         {
-            const float pullBackRate = 8f;
-            var offset = transform.position - _leashAnchor.position;
-            offset.y = 0f;
-            var distance = offset.magnitude;
-            if (distance < _leashLength - 0.1f)
+            const float taut = 0.02f;
+            const float give = 0.15f;
+            const float pullBackRate = 6f;
+            var stretch = _leash.Stretch;
+            if (stretch < taut)
             {
                 return _horizontalVelocity;
             }
 
-            var outward = offset / distance;
+            var outward = -_leash.Pull;
             var along = Vector3.Dot(_horizontalVelocity, outward);
             if (along > 0f)
             {
                 _horizontalVelocity -= outward * along;
             }
 
-            var overshoot = distance - _leashLength;
+            var overshoot = stretch - give;
             return overshoot > 0f
                 ? _horizontalVelocity - outward * Mathf.Min(overshoot * pullBackRate, overshoot / dt)
                 : _horizontalVelocity;

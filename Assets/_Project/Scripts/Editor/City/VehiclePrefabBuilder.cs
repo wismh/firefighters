@@ -148,7 +148,7 @@ namespace _Project.Editor.City
                 vehicle.Setup(body, controller, exit, cameraTarget, bodyBounds.size.z, bodyBounds.size.x);
                 if (source.name.Contains("fire_truck"))
                 {
-                    vehicle.SetHoseReel(AddHoseReel(root, bodyBounds));
+                    vehicle.SetHoseReel(AddHoseReel(root, bodyRenderers, bodyBounds));
                 }
 
                 var path = $"{OutputFolder}/{name}.prefab";
@@ -161,26 +161,79 @@ namespace _Project.Editor.City
             }
         }
 
-        /// <summary>A red drum on the right side near the back; the hose leaves it just outside the body collider.</summary>
-        private static FireHoseReel AddHoseReel(GameObject root, Bounds bodyBounds)
+        /// <summary>
+        /// A red drum on the right side near the back, sitting on the body panel. The body bounds can't place it:
+        /// the cab's mirrors make them half a metre wider than the box behind, which left the drum floating beside
+        /// the truck, so a ray finds the panel itself.
+        /// </summary>
+        private static FireHoseReel AddHoseReel(GameObject root, IReadOnlyList<MeshRenderer> bodyRenderers,
+            Bounds bodyBounds)
         {
+            // A primitive cylinder is 2 units tall, so its Y scale is the drum's half thickness.
+            const float drumHalfThickness = 0.08f;
+            const float hoseOffset = 0.04f;
+            var height = bodyBounds.min.y + bodyBounds.size.y * 0.35f;
+            var z = bodyBounds.min.z + 1.4f;
+            var side = FindSide(bodyRenderers, new Vector3(bodyBounds.max.x + 1f, height, z), bodyBounds.max.x);
+
             var attach = new GameObject("HoseReel").transform;
             attach.SetParent(root.transform, false);
-            attach.localPosition = new Vector3(bodyBounds.max.x + 0.12f, bodyBounds.min.y + bodyBounds.size.y * 0.35f,
-                bodyBounds.min.z + 1.4f);
+            attach.localPosition = new Vector3(side + drumHalfThickness * 2f + hoseOffset, height, z);
 
             var drum = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             drum.name = "Drum";
             Object.DestroyImmediate(drum.GetComponent<Collider>());
             drum.transform.SetParent(attach, false);
-            drum.transform.SetLocalPositionAndRotation(new Vector3(-0.06f, 0f, 0f), Quaternion.Euler(0f, 0f, 90f));
-            drum.transform.localScale = new Vector3(0.7f, 0.08f, 0.7f);
+            drum.transform.SetLocalPositionAndRotation(new Vector3(-(drumHalfThickness + hoseOffset), 0f, 0f),
+                Quaternion.Euler(0f, 0f, 90f));
+            drum.transform.localScale = new Vector3(0.7f, drumHalfThickness, 0.7f);
             drum.GetComponent<MeshRenderer>().sharedMaterial =
                 CitySceneSetup.EnsureFlatMaterial("HoseReel", new Color(0.75f, 0.12f, 0.1f));
 
             var reel = root.AddComponent<FireHoseReel>();
             reel.Setup(attach);
             return reel;
+        }
+
+        /// <summary>
+        /// Local X of the body surface hit by a ray cast from <paramref name="outside"/> towards the centre line,
+        /// against throwaway mesh colliders on the body; <paramref name="fallback"/> if nothing is hit.
+        /// The vehicle root sits at the origin unrotated while it is built, so world and local space agree.
+        /// </summary>
+        private static float FindSide(IReadOnlyList<MeshRenderer> bodyRenderers, Vector3 outside, float fallback)
+        {
+            var colliders = new List<MeshCollider>();
+            foreach (var renderer in bodyRenderers)
+            {
+                var collider = renderer.gameObject.AddComponent<MeshCollider>();
+                collider.sharedMesh = renderer.GetComponent<MeshFilter>().sharedMesh;
+                colliders.Add(collider);
+            }
+
+            Physics.SyncTransforms();
+            var ray = new Ray(outside, Vector3.left);
+            var side = fallback;
+            var nearest = float.MaxValue;
+            foreach (var collider in colliders)
+            {
+                if (collider.Raycast(ray, out var hit, 10f) && hit.distance < nearest)
+                {
+                    nearest = hit.distance;
+                    side = hit.point.x;
+                }
+            }
+
+            foreach (var collider in colliders)
+            {
+                Object.DestroyImmediate(collider);
+            }
+
+            if (nearest == float.MaxValue)
+            {
+                Debug.LogWarning($"[city] hose reel: no body panel found on {bodyRenderers[0].name}, using bounds");
+            }
+
+            return side;
         }
 
         private static Bounds Encapsulate(IReadOnlyList<Renderer> renderers)

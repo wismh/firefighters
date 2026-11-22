@@ -33,8 +33,6 @@ namespace _Project.Player
         [SerializeField] private float reelRadius = 3f;
         [Tooltip("The hose drops out of the hands when the truck ends up this much farther than the hose reaches.")]
         [SerializeField] private float hoseBreakMargin = 3f;
-        [Tooltip("Part of the hose length the player can walk away; the rest is slack that sags to the ground.")]
-        [SerializeField] private float leashFraction = 0.92f;
 
         private readonly Collider[] _nearby = new Collider[MaxNearbyColliders];
 
@@ -152,7 +150,7 @@ namespace _Project.Player
             reel.Take();
             nozzle.Show(true);
             hose.Attach(reel.AttachPoint, nozzle.HoseEnd, reel.Length);
-            walker.SetLeash(reel.AttachPoint, reel.Length * leashFraction);
+            walker.SetLeash(hose);
         }
 
         private void ReturnHose()
@@ -304,8 +302,13 @@ namespace _Project.Player
 
             if (IsHosing)
             {
-                return _atReel
-                    ? "ЛКМ — вода, E — повернути шланг"
+                if (_atReel)
+                {
+                    return "ЛКМ — вода, E — повернути шланг";
+                }
+
+                return hose.Stretch > 0.02f
+                    ? "Шланг натягнуто — далі не дістає"
                     : "ЛКМ — вода; щоб сісти в машину, поверни шланг на котушку";
             }
 

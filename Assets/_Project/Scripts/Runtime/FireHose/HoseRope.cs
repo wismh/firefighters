@@ -5,12 +5,16 @@ namespace _Project.FireHose
     /// <summary>
     /// The hose between the truck reel and the nozzle: a Verlet chain of fixed total length drawn with a
     /// LineRenderer. Slack falls to the ground and lies there; nodes are kept out of walls with short sweeps.
-    /// Only stretching is resisted, so the hose bends and coils freely.
+    /// Only stretching is resisted, so the hose bends and coils freely. Once the slack is used up the solver can no
+    /// longer fit the chain between its pins: <see cref="Stretch"/> says by how much, and <see cref="Pull"/> which
+    /// way the hose drags the hand, so the player is held by the hose itself, around corners included.
     /// </summary>
     public sealed class HoseRope : MonoBehaviour
     {
         private const int Iterations = 24;
         private const float MaxStep = 1f / 30f;
+        // The pull is taken along the last few metres, not the last node, so one wobbling node cannot swing it.
+        private const int PullSpan = 4;
 
         [SerializeField] private LineRenderer line;
         [SerializeField] private int nodeCount = 40;
@@ -24,14 +28,23 @@ namespace _Project.FireHose
         private Transform _start;
         private Transform _end;
         private float _segment;
+        private float _length;
         private bool _attached;
+
+        /// <summary>How much longer the hose path is than the hose, in metres; 0 while there is slack.</summary>
+        public float Stretch { get; private set; }
+
+        /// <summary>Horizontal unit direction the taut hose drags the hand in (back along the hose).</summary>
+        public Vector3 Pull { get; private set; }
 
         public void Attach(Transform start, Transform end, float length)
         {
             _start = start;
             _end = end;
+            _length = length;
             _segment = length / (nodeCount - 1);
             _attached = true;
+            Stretch = 0f;
             var from = start.position;
             var to = end.position;
             for (var i = 0; i < nodeCount; i++)
@@ -48,6 +61,7 @@ namespace _Project.FireHose
         public void Detach()
         {
             _attached = false;
+            Stretch = 0f;
             line.enabled = false;
         }
 
@@ -72,12 +86,27 @@ namespace _Project.FireHose
             for (var k = 0; k < Iterations; k++)
             {
                 Pin();
-                Constrain();
+                Constrain((k & 1) == 0);
             }
 
             Pin();
             ClampToGround();
+            MeasureTension();
             line.SetPositions(_positions);
+        }
+
+        private void MeasureTension()
+        {
+            var path = 0f;
+            for (var i = 1; i < nodeCount; i++)
+            {
+                path += Vector3.Distance(_positions[i - 1], _positions[i]);
+            }
+
+            Stretch = Mathf.Max(0f, path - _length);
+            var back = _positions[nodeCount - 1 - PullSpan] - _positions[nodeCount - 1];
+            back.y = 0f;
+            Pull = back.sqrMagnitude > 1e-6f ? back.normalized : Vector3.zero;
         }
 
         private void Integrate(float dt)
@@ -112,11 +141,16 @@ namespace _Project.FireHose
             _positions[nodeCount - 1] = _end.position;
         }
 
-        private void Constrain()
+        /// <summary>
+        /// One sweep over the segments. Sweeps alternate direction: a one-way sweep carries a pull from one end to
+        /// the other in a single pass but barely the other way, which leaves a taut hose sagging at one end.
+        /// </summary>
+        private void Constrain(bool forward)
         {
             var last = nodeCount - 2;
-            for (var i = 0; i <= last; i++)
+            for (var step = 0; step <= last; step++)
             {
+                var i = forward ? step : last - step;
                 var delta = _positions[i + 1] - _positions[i];
                 var distance = delta.magnitude;
                 if (distance <= _segment)
