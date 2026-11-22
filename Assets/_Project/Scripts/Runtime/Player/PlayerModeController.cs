@@ -12,6 +12,8 @@ namespace _Project.Player
     /// parked) takes it, E while driving slowly gets out; E at a fire truck's reel takes or returns the hose,
     /// and the left mouse button sprays water while it is in hand.
     /// </summary>
+    // Before TrafficSystem.Start, so the first traffic spawns already keep away from the player's start truck.
+    [DefaultExecutionOrder(-10)]
     public sealed class PlayerModeController : MonoBehaviour
     {
         private const int MaxNearbyColliders = 16;
@@ -20,6 +22,8 @@ namespace _Project.Player
         [SerializeField] private CharacterController character;
         [SerializeField] private Transform cameraTransform;
         [SerializeField] private VehicleCamera vehicleCamera;
+        [Tooltip("The player starts the game driving this car.")]
+        [SerializeField] private Vehicle startVehicle;
         [SerializeField] private float enterRadius = 4f;
         [SerializeField] private float maxExitSpeed = 4f;
         [SerializeField] private float onFootRadius = 0.6f;
@@ -59,6 +63,7 @@ namespace _Project.Player
             AttachCameraToHead();
             _traffic.SetFocus(walker.transform, onFootRadius, null);
             LockCursor(true);
+            Enter(startVehicle);
         }
 
         private void Update()

@@ -127,7 +127,8 @@ namespace _Project.Vehicles
 
         private void Start()
         {
-            if (parkedOnStart)
+            // The player may already have taken this car (the start truck), so only an unclaimed car parks.
+            if (parkedOnStart && Mode == VehicleMode.Traffic)
             {
                 SetMode(VehicleMode.Parked);
             }

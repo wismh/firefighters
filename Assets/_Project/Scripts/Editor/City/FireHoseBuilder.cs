@@ -13,7 +13,7 @@ namespace _Project.Editor.City
 {
     /// <summary>
     /// Adds the fire hose to the city scene: the nozzle with its water stream on the player camera, the hose
-    /// rope, pooled splash prefabs for the installer, and parked fire trucks next to the nearest fires.
+    /// rope, pooled splash prefabs for the installer, and the fire truck the player starts in.
     /// Re-running it replaces what it built before.
     /// </summary>
     public static class FireHoseBuilder
@@ -28,12 +28,6 @@ namespace _Project.Editor.City
         private const string NozzlePrefab = FxFolder + "/HoseNozzle.prefab";
         private const string FireTruckPrefab = VehiclePrefabBuilder.OutputFolder + "/Vehicle_fire_truck.prefab";
         private const int IgnoreRaycastLayer = 2;
-
-        /// <summary>
-        /// Truck centre distance from the block edge: the whole truck stands on the sidewalk, so traffic in the outer
-        /// lane (kinematic, it would shove the truck) passes about a metre clear of it.
-        /// </summary>
-        private const float TruckFromBlockEdge = 1.65f;
 
         private static readonly Color WaterColor = new Color(0.78f, 0.9f, 1f, 0.9f);
 
@@ -75,9 +69,14 @@ namespace _Project.Editor.City
 
             var nozzle = CreateNozzle(camera);
             var hose = CreateHose(modes.transform);
-            CitySceneSetup.SetRefs(modes, ("nozzle", nozzle), ("hose", hose));
+            var oldTrucks = GameObject.Find("FireTrucks");
+            if (oldTrucks != null)
+            {
+                Object.DestroyImmediate(oldTrucks);
+            }
 
-            PlaceFireTrucks(layout, walker.transform.position);
+            CitySceneSetup.SetRefs(modes, ("nozzle", nozzle), ("hose", hose), ("startVehicle", PlaceStartTruck(layout)));
+
             Debug.Log("[city] fire hose set up");
         }
 
@@ -300,80 +299,29 @@ namespace _Project.Editor.City
         }
 
         /// <summary>
-        /// One parked fire truck per burning building closest to the player start, along the building's street,
-        /// right side (with the reel) towards the building. Slides along the sidewalk until it clears lamps and props.
+        /// The fire truck the player starts in: in the outer lane of the street next to the player start, facing
+        /// the traffic direction (right-hand traffic: driving +X keeps to -Z).
         /// </summary>
-        private static void PlaceFireTrucks(CityLayout layout, Vector3 playerStart)
+        private static Vehicle PlaceStartTruck(CityLayout layout)
         {
-            var old = GameObject.Find("FireTrucks");
+            var old = GameObject.Find("StartFireTruck");
             if (old != null)
             {
                 Object.DestroyImmediate(old);
             }
 
             var prefab = AssetDatabase.LoadAssetAtPath<Vehicle>(FireTruckPrefab);
-            var root = new GameObject("FireTrucks").transform;
-            var fires = Object.FindObjectsByType<BuildingFire>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                .OrderBy(f => Vector3.Distance(f.transform.position, playerStart))
-                .Take(layout.parkedFireTrucks);
-            Physics.SyncTransforms();
-            foreach (var fire in fires)
-            {
-                var building = fire.transform.parent;
-                if (TryFindSpot(building, prefab, out var position, out var rotation))
-                {
-                    var truck = (GameObject)PrefabUtility.InstantiatePrefab(prefab.gameObject, root);
-                    truck.name = "FireTruck_" + building.name;
-                    truck.transform.SetPositionAndRotation(position, rotation);
-                    var so = new SerializedObject(truck.GetComponent<Vehicle>());
-                    so.FindProperty("parkedOnStart").boolValue = true;
-                    so.ApplyModifiedPropertiesWithoutUndo();
-                    Physics.SyncTransforms();
-                }
-                else
-                {
-                    Debug.LogWarning($"[city] no free kerb for a fire truck at {building.name}");
-                }
-            }
-        }
-
-        private static bool TryFindSpot(Transform building, Vehicle truck, out Vector3 position, out Quaternion rotation)
-        {
-            var front = Snap(building.rotation * Vector3.back);
-            var along = new Vector3(-front.z, 0f, front.x);
-            var block = building.parent.Find("GroundCollider").GetComponent<BoxCollider>().bounds;
-            var abs = new Vector3(Mathf.Abs(front.x), 0f, Mathf.Abs(front.z));
-            var edge = Vector3.Dot(block.center, front) + Vector3.Dot(block.extents, abs);
-            var blockAlong = Vector3.Dot(block.center, along);
-            var blockHalf = Vector3.Dot(block.extents, new Vector3(abs.z, 0f, abs.x));
-            var margin = truck.HalfLength + 1f;
-            var buildingAlong = Vector3.Dot(building.GetComponent<Renderer>().bounds.center, along);
-
-            // Right side (+X, the reel) faces the building.
-            var right = -front;
-            rotation = Quaternion.LookRotation(Vector3.Cross(right, Vector3.up), Vector3.up);
-            var halfExtents = new Vector3(truck.Width * 0.47f, 1.2f, truck.HalfLength);
-            for (var i = 0; i < 16; i++)
-            {
-                var shift = (i + 1) / 2 * 2f * (i % 2 == 0 ? 1f : -1f);
-                var t = Mathf.Clamp(buildingAlong + shift, blockAlong - blockHalf + margin, blockAlong + blockHalf - margin);
-                position = front * (edge + TruckFromBlockEdge) + along * t + Vector3.up * 0.15f;
-                if (!Physics.CheckBox(position + Vector3.up * 1.6f, halfExtents, rotation, Physics.DefaultRaycastLayers,
-                        QueryTriggerInteraction.Ignore))
-                {
-                    return true;
-                }
-            }
-
-            position = default;
-            return false;
-        }
-
-        private static Vector3 Snap(Vector3 direction)
-        {
-            return Mathf.Abs(direction.x) > Mathf.Abs(direction.z)
-                ? new Vector3(Mathf.Sign(direction.x), 0f, 0f)
-                : new Vector3(0f, 0f, Mathf.Sign(direction.z));
+            var truck = (GameObject)PrefabUtility.InstantiatePrefab(prefab.gameObject);
+            truck.name = "StartFireTruck";
+            var node = layout.NodePosition(layout.blocksX / 2, layout.blocksZ / 2);
+            var position = node + new Vector3(CityLayout.HalfRoad + 16f, CityLayout.AsphaltHeight + 0.3f,
+                -CityLayout.LaneOffset);
+            truck.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, 90f, 0f));
+            var vehicle = truck.GetComponent<Vehicle>();
+            var so = new SerializedObject(vehicle);
+            so.FindProperty("parkedOnStart").boolValue = true;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return vehicle;
         }
     }
 }
