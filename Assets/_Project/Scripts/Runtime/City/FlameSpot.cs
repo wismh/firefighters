@@ -15,6 +15,8 @@ namespace _Project.City
         public bool onRoof;
         public float baseScale = 1f;
         public ParticleSystem[] systems;
+        [Tooltip("Shown over the flame when only a few are left, so the last ones are easy to find.")]
+        public GameObject marker;
 
         [NonSerialized] public float Strength;
         [NonSerialized] public float LastWetTime;

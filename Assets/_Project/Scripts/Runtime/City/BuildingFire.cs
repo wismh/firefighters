@@ -37,8 +37,18 @@ namespace _Project.City
         [SerializeField] private float roofRadius = 7f;
         [Tooltip("...if the spot is at least this high above the building's base (the upper wall, not the ground).")]
         [SerializeField] private float roofMinHeight = 2.5f;
-        [Tooltip("The smallest a flame shrinks to before it goes out, as a part of its full size.")]
-        [SerializeField] private float minVisualScale = 0.25f;
+        [Tooltip("The smallest a flame shrinks to before it goes out, as a part of its full size. Kept large " +
+                 "enough that a weak flame by a wall is still easy to spot.")]
+        [SerializeField] private float minVisualScale = 0.55f;
+
+        [Header("Leftovers")]
+        [Tooltip("Below this average strength, with no flame stronger than finishFlameStrength, the rest dies out alone.")]
+        [SerializeField] private float finishStrength = 0.15f;
+        [SerializeField] private float finishFlameStrength = 0.3f;
+        [Tooltip("Strength per second the leftover flames lose while dying out on their own.")]
+        [SerializeField] private float finishRate = 0.1f;
+        [Tooltip("With this many flames or fewer still burning, each gets a marker so the player can find it.")]
+        [SerializeField] private int markLastFlames = 3;
 
         [Header("Fighting back")]
         [Tooltip("A put-out flame can catch again only after it has been dry this long.")]
@@ -209,14 +219,32 @@ namespace _Project.City
 
             var now = Time.time;
             var total = 0f;
-            for (var i = 0; i < flames.Length; i++)
+            var strongest = 0f;
+            var burning = 0;
+            foreach (var flame in flames)
             {
-                var flame = flames[i];
-                if (flame.Strength <= 0f)
+                total += flame.Strength;
+                strongest = Mathf.Max(strongest, flame.Strength);
+                burning += flame.Strength > 0f ? 1 : 0;
+            }
+
+            // The last scraps are not worth hunting for: once only weak flames are left, they go out by themselves.
+            var finishing = total / flames.Length < finishStrength && strongest <= finishFlameStrength;
+            var mark = burning <= markLastFlames;
+            var dt = Time.deltaTime;
+            total = 0f;
+            foreach (var flame in flames)
+            {
+                if (flame.Strength > 0f && finishing)
+                {
+                    SetStrength(flame, flame.Strength - finishRate * dt);
+                }
+                else if (flame.Strength <= 0f && !finishing)
                 {
                     UpdateReignite(flame, now);
                 }
 
+                flame.marker.SetActive(mark && flame.Strength > 0f);
                 total += flame.Strength;
             }
 
