@@ -52,13 +52,11 @@ namespace _Project.Editor.City
                 Object.DestroyImmediate(root);
             }
 
-            ConfigurePipeline();
-            var sun = CreateLighting();
             var views = BuildCity(layout);
             var network = CreateTraffic(layout, traffic, views);
             CreatePlayer(layout);
             CreateSceneContext();
-            RenderSettings.sun = sun;
+            CityLightingSetup.Apply(true);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -156,38 +154,6 @@ namespace _Project.Editor.City
                 .ToArray();
         }
 
-        private static void ConfigurePipeline()
-        {
-            var pipeline = (UniversalRenderPipelineAsset)GraphicsSettings.defaultRenderPipeline;
-            var so = new SerializedObject(pipeline);
-            so.FindProperty("m_MainLightShadowsSupported").boolValue = true;
-            so.FindProperty("m_ShadowDistance").floatValue = 120f;
-            so.FindProperty("m_SoftShadowsSupported").boolValue = true;
-            so.ApplyModifiedPropertiesWithoutUndo();
-            EditorUtility.SetDirty(pipeline);
-        }
-
-        private static Light CreateLighting()
-        {
-            var sunObject = new GameObject("Sun");
-            sunObject.transform.rotation = Quaternion.Euler(48f, -35f, 0f);
-            var sun = sunObject.AddComponent<Light>();
-            sun.type = LightType.Directional;
-            sun.intensity = 1.4f;
-            sun.color = new Color(1f, 0.96f, 0.88f);
-            sun.shadows = LightShadows.Soft;
-
-            RenderSettings.skybox = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Skybox.mat");
-            RenderSettings.ambientMode = AmbientMode.Skybox;
-            RenderSettings.ambientIntensity = 1.1f;
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogStartDistance = 180f;
-            RenderSettings.fogEndDistance = 520f;
-            RenderSettings.fogColor = new Color(0.72f, 0.8f, 0.88f);
-            return sun;
-        }
-
         private static List<TrafficLightView> BuildCity(CityLayout layout)
         {
             var random = new System.Random(layout.seed);
@@ -238,7 +204,8 @@ namespace _Project.Editor.City
         {
             var size = layout.Size;
             var center = layout.Center;
-            var margin = 200f;
+            // Wide enough that the sky below the horizon never shows past the fog.
+            var margin = 1500f;
 
             var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
             ground.name = "Ground";
