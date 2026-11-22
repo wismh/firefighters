@@ -22,6 +22,7 @@ namespace _Project.Editor.City
         private const string MuzzleFlash = Fx + "Prefabs/Combat/Muzzleflash/LiquidMuzzle/LiquidMuzzleWater.prefab";
         private const string GroundSplashSource = Fx + "Prefabs/Environment/Water/Flowing/Sharp/WaterSplashSharp.prefab";
         private const string WallSplashSource = Fx + "Prefabs/Combat/Explosions/LiquidExplosion/LiquidExplosionWater.prefab";
+        private const string SoftGlow = Fx + "Materials/Basics/glow1_AB.mat";
         private const string StretchyDrop = Fx + "Materials/Basics/circlestretchy_AB.mat";
         private const string WaterBody = Fx + "Materials/Misc/Liquid/water_3x3.mat";
         private const string FxFolder = "Assets/_Project/Prefabs/Fx";
@@ -56,7 +57,9 @@ namespace _Project.Editor.City
             var wallSplash = EnsureSplash(WallSplashSource, "WaterWallSplash", 0.7f, "Bubbles", "BubbleSubEmitter");
 
             var installer = Object.FindFirstObjectByType<CityInstaller>();
-            CitySceneSetup.SetRefs(installer, ("groundSplash", groundSplash), ("wallSplash", wallSplash));
+            var steam = EnsureSteam();
+            CitySceneSetup.SetRefs(installer, ("groundSplash", groundSplash), ("wallSplash", wallSplash),
+                ("steam", steam));
 
             var modes = Object.FindFirstObjectByType<PlayerModeController>();
             var refs = new SerializedObject(modes);
@@ -121,6 +124,86 @@ namespace _Project.Editor.City
             finally
             {
                 Object.DestroyImmediate(instance);
+            }
+        }
+
+        /// <summary>
+        /// A puff of steam where water hits a flame: a dozen soft round blobs (no cloud texture, which reads as
+        /// cartoon cauliflower) overlapping at low alpha, so they merge into a hazy veil that swells, rises and fades.
+        /// </summary>
+        private static PooledParticleFxView EnsureSteam()
+        {
+            var go = new GameObject("WaterSteam");
+            try
+            {
+                var system = go.AddComponent<ParticleSystem>();
+                system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var main = system.main;
+                main.playOnAwake = false;
+                main.loop = false;
+                main.duration = 0.3f;
+                main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 2f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(0.3f, 1f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.9f, 1.8f);
+                main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+                main.startColor = new Color(0.93f, 0.95f, 0.97f, 1f);
+                main.gravityModifier = -0.06f;
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+                main.maxParticles = 32;
+
+                var emission = system.emission;
+                emission.rateOverTime = 0f;
+                emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 9, 13) });
+
+                var shape = system.shape;
+                shape.shapeType = ParticleSystemShapeType.Sphere;
+                shape.radius = 0.5f;
+
+                var velocity = system.velocityOverLifetime;
+                velocity.enabled = true;
+                velocity.space = ParticleSystemSimulationSpace.World;
+                // All three axes must use the same curve mode (here: random between two constants).
+                velocity.x = new ParticleSystem.MinMaxCurve(-0.15f, 0.15f);
+                velocity.y = new ParticleSystem.MinMaxCurve(0.8f, 1.6f);
+                velocity.z = new ParticleSystem.MinMaxCurve(-0.15f, 0.15f);
+
+                var rotation = system.rotationOverLifetime;
+                rotation.enabled = true;
+                rotation.z = new ParticleSystem.MinMaxCurve(-0.6f, 0.6f);
+
+                var size = system.sizeOverLifetime;
+                size.enabled = true;
+                size.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
+                    new Keyframe(0f, 0.6f), new Keyframe(0.4f, 1.3f), new Keyframe(1f, 2.2f)));
+
+                var color = system.colorOverLifetime;
+                color.enabled = true;
+                var gradient = new Gradient();
+                gradient.SetKeys(
+                    new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                    new[]
+                    {
+                        new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.3f, 0.12f),
+                        new GradientAlphaKey(0.15f, 0.55f), new GradientAlphaKey(0f, 1f),
+                    });
+                color.color = gradient;
+
+                var renderer = go.GetComponent<ParticleSystemRenderer>();
+                renderer.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(SoftGlow);
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+
+                var view = go.AddComponent<PooledParticleFxView>();
+                var so = new SerializedObject(view);
+                so.FindProperty("_particleSystem").objectReferenceValue = system;
+                so.FindProperty("_maxLifetime").floatValue = 3f;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                var saved = PrefabUtility.SaveAsPrefabAsset(go, $"{FxFolder}/WaterSteam.prefab");
+                return saved.GetComponent<PooledParticleFxView>();
+            }
+            finally
+            {
+                Object.DestroyImmediate(go);
             }
         }
 

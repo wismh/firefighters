@@ -88,7 +88,7 @@ namespace _Project.Editor.City
             var blocks = GameObject.Find("City/Blocks").transform;
             foreach (var fire in blocks.GetComponentsInChildren<BuildingFire>(true))
             {
-                Object.DestroyImmediate(fire.gameObject);
+                BuildingFireBuilder.RemoveFire(fire);
             }
 
             AddFires(EnsureLayout(), blocks);

@@ -11,8 +11,6 @@ namespace _Project.FireHose
     /// </summary>
     public sealed class WaterNozzle : MonoBehaviour
     {
-        private const int MaxArcSteps = 40;
-        private const float ArcStep = 0.05f;
 
         [SerializeField] private Transform muzzle;
         [SerializeField] private Transform hoseEnd;
@@ -110,25 +108,8 @@ namespace _Project.FireHose
 
         private void TraceArc()
         {
-            var position = muzzle.position;
-            var velocity = muzzle.forward * speed;
-            var gravity = Physics.gravity * gravityModifier;
-            for (var i = 0; i < MaxArcSteps; i++)
-            {
-                var next = position + velocity * ArcStep + gravity * (0.5f * ArcStep * ArcStep);
-                velocity += gravity * ArcStep;
-                if (Physics.Linecast(position, next, out _hit, Physics.DefaultRaycastLayers,
-                        QueryTriggerInteraction.Ignore))
-                {
-                    HasHit = true;
-                    _hitTime = (i + 1) * ArcStep;
-                    return;
-                }
-
-                position = next;
-            }
-
-            HasHit = false;
+            HasHit = WaterArc.Trace(muzzle.position, muzzle.forward * speed, Physics.gravity * gravityModifier,
+                out _hit, out _hitTime);
         }
     }
 }

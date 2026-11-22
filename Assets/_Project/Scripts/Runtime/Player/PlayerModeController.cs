@@ -40,6 +40,8 @@ namespace _Project.Player
 
         private PlayerInputs _inputs;
         private TrafficSystem _traffic;
+        private FireService _fires;
+        private string _fireText;
         private Vehicle _vehicle;
         private Vehicle _hintVehicle;
         private FireHoseReel _hintReel;
@@ -50,10 +52,11 @@ namespace _Project.Player
         public bool IsHosing => _reel != null;
 
         [Inject]
-        public void Construct(PlayerInputs inputs, TrafficSystem traffic)
+        public void Construct(PlayerInputs inputs, TrafficSystem traffic, FireService fires)
         {
             _inputs = inputs;
             _traffic = traffic;
+            _fires = fires;
         }
 
         private void Start()
@@ -64,6 +67,18 @@ namespace _Project.Player
             _traffic.SetFocus(walker.transform, onFootRadius, null);
             LockCursor(true);
             Enter(startVehicle);
+            _fires.FireOut += UpdateFireText;
+            UpdateFireText(_fires.Total);
+        }
+
+        private void OnDestroy()
+        {
+            _fires.FireOut -= UpdateFireText;
+        }
+
+        private void UpdateFireText(int burning)
+        {
+            _fireText = burning > 0 ? $"Пожежі: {burning} / {_fires.Total}" : "Усі пожежі згашено!";
         }
 
         private void Update()
@@ -273,6 +288,7 @@ namespace _Project.Player
             var style = GUI.skin.label;
             style.fontSize = 18;
             GUI.Label(new Rect(20f, Screen.height - 40f, 900f, 30f), HintText(), style);
+            GUI.Label(new Rect(20f, 16f, 400f, 30f), _fireText, style);
             if (IsHosing)
             {
                 GUI.Label(new Rect(Screen.width * 0.5f - 5f, Screen.height * 0.5f - 13f, 20f, 26f), "+", style);

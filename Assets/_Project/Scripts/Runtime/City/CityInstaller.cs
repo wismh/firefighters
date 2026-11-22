@@ -13,6 +13,7 @@ namespace _Project.City
         [SerializeField] private InputActionAsset inputActions;
         [SerializeField] private PooledParticleFxView groundSplash;
         [SerializeField] private PooledParticleFxView wallSplash;
+        [SerializeField] private PooledParticleFxView steam;
 
         public override void InstallBindings()
         {
@@ -23,7 +24,11 @@ namespace _Project.City
             {
                 new ParticleFxPoolBinding<WaterFxId>(WaterFxId.GroundSplash, groundSplash, 16),
                 new ParticleFxPoolBinding<WaterFxId>(WaterFxId.WallSplash, wallSplash, 16),
+                new ParticleFxPoolBinding<WaterFxId>(WaterFxId.Steam, steam, 12),
             }, transform);
+            Container.Bind<WaterNozzle>().FromComponentInHierarchy().AsSingle();
+            Container.Bind<BuildingFire>().FromComponentsInHierarchy().AsTransient();
+            Container.BindInterfacesAndSelfTo<FireService>().AsSingle();
         }
     }
 }

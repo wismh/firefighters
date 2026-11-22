@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using _Project.City;
+using _Project.FireHose;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -45,18 +46,14 @@ namespace _Project.Editor.City
             root.SetParent(building.transform, false);
             var top = local.max.y;
 
+            // The mesh collider places the flames and then stays: the box around a house with a porch and a
+            // pitched roof hides flames a few metres inside it, out of the water's reach.
             var probe = building.AddComponent<MeshCollider>();
             probe.sharedMesh = building.GetComponent<MeshFilter>().sharedMesh;
-            try
-            {
-                AddWallFire(building.transform, probe, local, root, random);
-                AddGroundFire(building.transform, probe, local, root, random);
-                AddRoofFire(building.transform, probe, local, root, random);
-            }
-            finally
-            {
-                Object.DestroyImmediate(probe);
-            }
+            building.GetComponent<BoxCollider>().enabled = false;
+            AddWallFire(building.transform, probe, local, root, random);
+            AddGroundFire(building.transform, probe, local, root, random);
+            AddRoofFire(building.transform, probe, local, root, random);
 
             // Smoke: one dark column and a softer, wider plume, leaning with a light wind.
             var center = new Vector3(local.center.x, top, local.center.z);
@@ -85,7 +82,130 @@ namespace _Project.Editor.City
             fireLight.shadows = LightShadows.None;
 
             var fire = root.gameObject.AddComponent<BuildingFire>();
-            fire.Setup(fireLight, renderers);
+            var flames = ReachableFlames(fire, CollectFlames(root), WorldBounds(renderers));
+            fire.Setup(fireLight, renderers, flames, Systems(root, SmokeColumn, SmokeSoft), Systems(root, Embers));
+        }
+
+        /// <summary>Takes the fire off a building and gives it back its box collider.</summary>
+        public static void RemoveFire(BuildingFire fire)
+        {
+            var building = fire.transform.parent.gameObject;
+            Object.DestroyImmediate(fire.gameObject);
+            // Fires built before the mesh collider was kept have none.
+            if (building.TryGetComponent<MeshCollider>(out var mesh))
+            {
+                Object.DestroyImmediate(mesh);
+            }
+
+            building.GetComponent<BoxCollider>().enabled = true;
+        }
+
+        /// <summary>
+        /// Keeps only flames the hose can put out: for each flame, shots from the street around the building
+        /// (several distances, yaws and pitches, the nozzle's real arc) must land where
+        /// <see cref="BuildingFire.Reach"/> gives it a fair share of water. Unreachable flames are removed, or
+        /// they would burn forever and keep re-lighting their neighbours.
+        /// </summary>
+        private static FlameSpot[] ReachableFlames(BuildingFire fire, FlameSpot[] flames, Bounds bounds)
+        {
+            const float nozzleHeight = 1.95f;
+            const float minReach = 0.35f;
+            Physics.SyncTransforms();
+            var shooters = new List<Vector3>();
+            foreach (var side in Sides)
+            {
+                var along = new Vector3(side.z, 0f, side.x);
+                var face = bounds.center + Vector3.Scale(bounds.extents, side);
+                var width = Vector3.Dot(bounds.size, new Vector3(Mathf.Abs(along.x), 0f, Mathf.Abs(along.z)));
+                foreach (var distance in new[] { 4f, 8f, 13f })
+                {
+                    foreach (var u in new[] { -0.4f, -0.15f, 0.15f, 0.4f })
+                    {
+                        var p = face + side * distance + along * (u * width);
+                        p.y = 0f;
+                        var blocked = Physics.CheckCapsule(p + Vector3.up * 0.6f, p + Vector3.up * 2f, 0.4f,
+                            Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                        if (!blocked)
+                        {
+                            shooters.Add(p + Vector3.up * nozzleHeight);
+                        }
+                    }
+                }
+            }
+
+            var speed = 21.5f;
+            var kept = new List<FlameSpot>();
+            foreach (var flame in flames)
+            {
+                var target = flame.root.position;
+                var reachable = shooters.OrderBy(s => (s - target).sqrMagnitude).Any(shooter =>
+                {
+                    var flat = target - shooter;
+                    flat.y = 0f;
+                    var yaw = Quaternion.LookRotation(flat).eulerAngles.y;
+                    for (var dy = -8f; dy <= 8f; dy += 4f)
+                    {
+                        for (var pitch = -10f; pitch <= 50f; pitch += 5f)
+                        {
+                            var direction = Quaternion.Euler(-pitch, yaw + dy, 0f) * Vector3.forward;
+                            var hit = WaterArc.Trace(shooter, direction * speed, Physics.gravity, out var h, out _);
+                            if (hit && fire.Reach(target, h.point, h.normal) >= minReach)
+                            {
+                                return true;
+                            }
+                        }
+                    }
+
+                    return false;
+                });
+                if (reachable)
+                {
+                    kept.Add(flame);
+                }
+                else
+                {
+                    Object.DestroyImmediate(flame.root.gameObject);
+                }
+            }
+
+            Debug.Log($"[city] {fire.transform.parent.name}: {kept.Count}/{flames.Length} flames reachable by the hose");
+            return kept.ToArray();
+        }
+
+        private static Bounds WorldBounds(IReadOnlyList<Renderer> renderers)
+        {
+            var bounds = renderers[0].bounds;
+            foreach (var r in renderers)
+            {
+                bounds.Encapsulate(r.bounds);
+            }
+
+            return bounds;
+        }
+
+        /// <summary>Every flame effect under the fire root, with the scale it was placed at.</summary>
+        private static FlameSpot[] CollectFlames(Transform root)
+        {
+            return Instances(root, GroundFire, TallFire, BodyFire)
+                .Select(t => new FlameSpot
+                {
+                    root = t,
+                    baseScale = t.localScale.x,
+                    systems = t.GetComponentsInChildren<ParticleSystem>(true)
+                        .Where(s => s.gameObject.activeSelf).ToArray(),
+                })
+                .ToArray();
+        }
+
+        private static ParticleSystem[] Systems(Transform root, params string[] sources)
+        {
+            return Instances(root, sources).SelectMany(t => t.GetComponentsInChildren<ParticleSystem>(true)).ToArray();
+        }
+
+        private static IEnumerable<Transform> Instances(Transform root, params string[] sources)
+        {
+            return root.Cast<Transform>().Where(t =>
+                sources.Contains(AssetDatabase.GetAssetPath(PrefabUtility.GetCorrespondingObjectFromSource(t.gameObject))));
         }
 
         /// <summary>
