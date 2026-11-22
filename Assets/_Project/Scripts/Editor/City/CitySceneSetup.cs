@@ -512,7 +512,7 @@ namespace _Project.Editor.City
             // The pole of lamp_mesh stands 1.4 m off its pivot; the head overhangs the other way.
             AddCapsule(lamp, new Vector3(0f, 0f, 1.375f), 0.4f, 7.9f);
             AddBox(lamp, new Vector3(0f, 8.1f, -0.2f), new Vector3(0.6f, 0.9f, 3.4f));
-            AddKnockable(lamp, 120f, 6f);
+            AddKnockable(lamp, 120f, 6f, 0.6f);
         }
 
         private static void AddSidewalkProp(CityLayout layout, Transform parent, System.Random random, Vector3 position)
@@ -528,11 +528,11 @@ namespace _Project.Editor.City
             prop.AddComponent<BoxCollider>();
             if (prefab.name.Contains("hydrant"))
             {
-                AddKnockable(prop, 150f, 5f);
+                AddKnockable(prop, 150f, 5f, 0.8f);
             }
             else
             {
-                AddKnockable(prop, 30f, 2f);
+                AddKnockable(prop, 30f, 2f, 0.2f);
             }
         }
 
@@ -581,7 +581,7 @@ namespace _Project.Editor.City
                 AddCapsule(sign, Vector3.zero, 0.4f, 10f);
                 AddCapsule(sign, new Vector3(GantrySpan, 0f, 0f), 0.4f, 10f);
                 AddBox(sign, new Vector3(GantrySpan * 0.5f, 8.4f, 0f), new Vector3(GantrySpan + 0.8f, 3.6f, 0.4f));
-                AddKnockable(sign, 400f, 8f);
+                AddKnockable(sign, 400f, 8f, 0.8f);
                 return;
             }
 
@@ -594,12 +594,12 @@ namespace _Project.Editor.City
             AddCapsule(arm, Vector3.zero, 0.4f, 9.4f);
             var armSide = armPlusX ? 1f : -1f;
             AddBox(arm, new Vector3(armSide * 3.9f, 8.25f, 0f), new Vector3(8.4f, 2.3f, 0.4f));
-            AddKnockable(arm, 150f, 6f);
+            AddKnockable(arm, 150f, 6f, 0.7f);
         }
 
-        private static void AddKnockable(GameObject instance, float mass, float breakSpeed)
+        private static void AddKnockable(GameObject instance, float mass, float breakSpeed, float dentHardness)
         {
-            instance.AddComponent<KnockableProp>().Setup(mass, breakSpeed, 0.9f, EnsureDebrisMaterial());
+            instance.AddComponent<KnockableProp>().Setup(mass, breakSpeed, dentHardness, 0.9f, EnsureDebrisMaterial());
         }
 
         private static PhysicsMaterial EnsureDebrisMaterial()
@@ -671,7 +671,7 @@ namespace _Project.Editor.City
                             Quaternion.Euler(0f, YawToFace(layout.trafficLight, towardRoad), 0f));
                         AddCapsule(light, new Vector3(0f, 0f, -0.15f), 0.4f, 7.9f);
                         AddBox(light, new Vector3(0f, 7.1f, 0.2f), new Vector3(1.1f, 1.5f, 1f));
-                        AddKnockable(light, 200f, 8f);
+                        AddKnockable(light, 200f, 8f, 0.7f);
 
                         var bounds = WorldBounds(light);
                         var reach = Mathf.Max(0.6f, Vector3.Dot(bounds.center - position, towardRoad) * 2f - 0.6f);

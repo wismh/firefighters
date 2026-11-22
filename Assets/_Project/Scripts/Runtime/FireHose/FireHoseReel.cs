@@ -6,7 +6,7 @@ namespace _Project.FireHose
     public sealed class FireHoseReel : MonoBehaviour
     {
         [SerializeField] private Transform attachPoint;
-        [SerializeField] private float length = 30f;
+        [SerializeField] private float length = 35f;
 
         public Transform AttachPoint => attachPoint;
         public float Length => length;

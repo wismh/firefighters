@@ -44,6 +44,7 @@ namespace _Project.Editor.City
         public static List<Vehicle> BuildAll()
         {
             Directory.CreateDirectory(OutputFolder);
+            DeformableMeshBuilder.Reset();
             var result = new List<Vehicle>();
             foreach (var (source, mass) in Sources)
             {
@@ -146,6 +147,7 @@ namespace _Project.Editor.City
 
                 var vehicle = root.AddComponent<Vehicle>();
                 vehicle.Setup(body, controller, exit, cameraTarget, bodyBounds.size.z, bodyBounds.size.x);
+                vehicle.SetDamage(AddDamage(root, bodyRenderers, bodyBounds));
                 if (source.name.Contains("fire_truck"))
                 {
                     vehicle.SetHoseReel(AddHoseReel(root, bodyRenderers, bodyBounds));
@@ -234,6 +236,159 @@ namespace _Project.Editor.City
             }
 
             return side;
+        }
+
+        private static VehicleDamage AddDamage(GameObject root, IReadOnlyList<MeshRenderer> bodyRenderers,
+            Bounds bodyBounds)
+        {
+            // SimpleTown bodies are one mesh each; the hose reel drum is added after this.
+            var filter = bodyRenderers[0].GetComponent<MeshFilter>();
+            var intact = filter.sharedMesh;
+            var damage = root.AddComponent<VehicleDamage>();
+            // Dent sizes are tuned on the 5.3 m car; a bus or a truck dents in proportion.
+            var sizeScale = Mathf.Max(1f, bodyBounds.size.z / 5.3f);
+            damage.Setup(filter, intact, DeformableMeshBuilder.Ensure(intact), sizeScale, AddSparks(root),
+                AddSmoke(root, bodyRenderers, bodyBounds, sizeScale));
+            return damage;
+        }
+
+        /// <summary>Short yellow streaks that fly off a dent and drop; emitted by hand, so nothing plays alone.</summary>
+        private static ParticleSystem AddSparks(GameObject root)
+        {
+            var go = new GameObject("DentSparks");
+            go.transform.SetParent(root.transform, false);
+            var system = go.AddComponent<ParticleSystem>();
+            system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = system.main;
+            main.playOnAwake = false;
+            main.loop = false;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.25f, 0.6f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(4f, 9f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.11f);
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.95f, 0.6f), new Color(1f, 0.6f, 0.15f));
+            main.gravityModifier = 1.2f;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 64;
+
+            var emission = system.emission;
+            emission.rateOverTime = 0f;
+
+            var shape = system.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 55f;
+            shape.radius = 0.15f;
+
+            var color = system.colorOverLifetime;
+            color.enabled = true;
+            var gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(new Color(1f, 0.4f, 0.1f), 1f) },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.6f), new GradientAlphaKey(0f, 1f) });
+            color.color = gradient;
+
+            var renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Stretch;
+            renderer.velocityScale = 0.04f;
+            renderer.lengthScale = 1f;
+            renderer.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(FireHoseBuilder.StretchyDrop);
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return system;
+        }
+
+        /// <summary>
+        /// Dark smoke from under the bonnet of a battered car: soft blobs, like the hose steam but grey, rising and
+        /// trailing behind in world space while the car drives on.
+        /// </summary>
+        private static ParticleSystem AddSmoke(GameObject root, IReadOnlyList<MeshRenderer> bodyRenderers,
+            Bounds bodyBounds, float sizeScale)
+        {
+            // On the body surface near the front: the bonnet of a car, the cab roof of a cab-over truck.
+            var z = bodyBounds.max.z - 0.9f * sizeScale;
+            var top = FindTop(bodyRenderers, new Vector3(0f, bodyBounds.max.y + 1f, z), bodyBounds.max.y);
+            var go = new GameObject("DamageSmoke");
+            go.transform.SetParent(root.transform, false);
+            go.transform.SetLocalPositionAndRotation(new Vector3(0f, top + 0.1f, z), Quaternion.Euler(-90f, 0f, 0f));
+            var system = go.AddComponent<ParticleSystem>();
+            system.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = system.main;
+            main.playOnAwake = false;
+            main.loop = true;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1.5f, 2.5f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.6f, 1.4f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.6f * sizeScale, 1.1f * sizeScale);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.startColor = new Color(0.22f, 0.22f, 0.22f, 1f);
+            main.gravityModifier = -0.08f;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 48;
+
+            var emission = system.emission;
+            emission.rateOverTime = 0f;
+
+            var shape = system.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 15f;
+            shape.radius = 0.4f * sizeScale;
+
+            var rotation = system.rotationOverLifetime;
+            rotation.enabled = true;
+            rotation.z = new ParticleSystem.MinMaxCurve(-0.6f, 0.6f);
+
+            var size = system.sizeOverLifetime;
+            size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(
+                new Keyframe(0f, 0.5f), new Keyframe(0.3f, 1.2f), new Keyframe(1f, 2.6f)));
+
+            var color = system.colorOverLifetime;
+            color.enabled = true;
+            var gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[]
+                {
+                    new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.5f, 0.1f),
+                    new GradientAlphaKey(0.25f, 0.6f), new GradientAlphaKey(0f, 1f),
+                });
+            color.color = gradient;
+
+            var renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(FireHoseBuilder.SoftGlow);
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return system;
+        }
+
+        /// <summary>Local Y of the body surface under <paramref name="above"/>; <paramref name="fallback"/> if none.</summary>
+        private static float FindTop(IReadOnlyList<MeshRenderer> bodyRenderers, Vector3 above, float fallback)
+        {
+            var colliders = new List<MeshCollider>();
+            foreach (var renderer in bodyRenderers)
+            {
+                var collider = renderer.gameObject.AddComponent<MeshCollider>();
+                collider.sharedMesh = renderer.GetComponent<MeshFilter>().sharedMesh;
+                colliders.Add(collider);
+            }
+
+            Physics.SyncTransforms();
+            var ray = new Ray(above, Vector3.down);
+            var top = fallback;
+            var nearest = float.MaxValue;
+            foreach (var collider in colliders)
+            {
+                if (collider.Raycast(ray, out var hit, 20f) && hit.distance < nearest)
+                {
+                    nearest = hit.distance;
+                    top = hit.point.y;
+                }
+            }
+
+            foreach (var collider in colliders)
+            {
+                Object.DestroyImmediate(collider);
+            }
+
+            return top;
         }
 
         private static Bounds Encapsulate(IReadOnlyList<Renderer> renderers)

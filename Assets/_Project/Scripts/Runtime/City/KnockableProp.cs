@@ -26,6 +26,8 @@ namespace _Project.City
         [Range(0f, 1f)] [SerializeField] private float carSpeedKept = 0.9f;
         [Tooltip("Tip-over rate, rad/s per m/s of the hit: the top falls away from the car.")]
         [SerializeField] private float tipRate = 0.25f;
+        [Tooltip("How much a car dents on hitting this prop while it stands, against 1 for a wall.")]
+        [Range(0f, 1f)] [SerializeField] private float dentHardness = 0.6f;
         [Tooltip("Low-friction material for the fallen prop, so a car slides over it instead of beaching on it.")]
         [SerializeField] private PhysicsMaterial fallenMaterial;
 
@@ -33,11 +35,22 @@ namespace _Project.City
         public event Action<KnockableProp> Knocked;
 
         public bool IsKnocked { get; private set; }
+        public float DentHardness => dentHardness;
 
-        public void Setup(float propMass, float propBreakSpeed, float speedKept, PhysicsMaterial material)
+        private float _knockedAt;
+
+        /// <summary>Knocked over in an earlier physics step than <paramref name="fixedTime"/>: lying debris.</summary>
+        public bool WasLyingBefore(float fixedTime)
+        {
+            return IsKnocked && _knockedAt < fixedTime;
+        }
+
+        public void Setup(float propMass, float propBreakSpeed, float hardness, float speedKept,
+            PhysicsMaterial material)
         {
             mass = propMass;
             breakSpeed = propBreakSpeed;
+            dentHardness = hardness;
             carSpeedKept = speedKept;
             fallenMaterial = material;
         }
@@ -60,6 +73,7 @@ namespace _Project.City
         private void KnockOver(Vehicle vehicle, Vector3 point)
         {
             IsKnocked = true;
+            _knockedAt = Time.fixedTime;
             // The solver has already stopped the car against the still static collider; give its speed back.
             var carVelocity = vehicle.Controller.PreStepVelocity;
             vehicle.HitProp(point, carSpeedKept);

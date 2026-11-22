@@ -20,8 +20,14 @@ namespace _Project.Vehicles
         [SerializeField] private float knockoutSpeed = 4f;
         [Tooltip("Optional: only fire trucks carry a hose reel.")]
         [SerializeField] private FireHoseReel hoseReel;
+        [SerializeField] private VehicleDamage damage;
         [Tooltip("Placed in the scene as a parked car instead of being spawned by traffic.")]
         [SerializeField] private bool parkedOnStart;
+
+        private const float GroundNormalY = 0.7f;
+        private const float DebrisHardness = 0.1f;
+        // Dents centre this far above the lowest contact: bumper height on the body collider.
+        private const float BumperRise = 0.3f;
 
         private Collider[] _colliders;
         private Vector3[] _wheelBasePositions;
@@ -45,6 +51,7 @@ namespace _Project.Vehicles
 
         /// <summary>The fire hose reel, or null for cars without one.</summary>
         public FireHoseReel HoseReel => hoseReel;
+        public VehicleDamage Damage => damage;
         public float Speed => body.isKinematic ? TrafficSpeed : body.linearVelocity.magnitude;
 
         /// <summary>Speed set by the traffic system while kinematic.</summary>
@@ -64,6 +71,11 @@ namespace _Project.Vehicles
         public void SetHoseReel(FireHoseReel reel)
         {
             hoseReel = reel;
+        }
+
+        public void SetDamage(VehicleDamage vehicleDamage)
+        {
+            damage = vehicleDamage;
         }
 
         public void SetMode(VehicleMode mode)
@@ -125,6 +137,7 @@ namespace _Project.Vehicles
             body.rotation = rotation;
             TrafficSpeed = 0f;
             _wheelSpin = 0f;
+            damage.Repair();
             var wheels = controller.Wheels;
             for (var i = 0; i < wheels.Length; i++)
             {
@@ -154,6 +167,61 @@ namespace _Project.Vehicles
             }
         }
 
+        /// <summary>
+        /// Dents the body at the deepest contact. The dent grows with the closing speed along the contact normal,
+        /// scaled by how hard the other thing is: a wall fully, a car by its mass against ours, a street prop by its
+        /// own hardness, a prop already lying on the road hardly at all.
+        /// </summary>
+        private void Dent(Collision collision)
+        {
+            var count = collision.contactCount;
+            if (count == 0)
+            {
+                return;
+            }
+
+            // Across the contact patch take its middle, but up and down its lowest point: box-on-box contacts sit at
+            // the patch corners, and the middle of a tall patch (a pole, a wall) is the windscreen, not the bumper
+            // that takes the hit.
+            var point = Vector3.zero;
+            var normal = Vector3.zero;
+            var lowest = float.MaxValue;
+            for (var i = 0; i < count; i++)
+            {
+                var contact = collision.GetContact(i);
+                point += contact.point;
+                normal += contact.normal;
+                lowest = Mathf.Min(lowest, contact.point.y);
+            }
+
+            point /= count;
+            point.y = lowest + BumperRise;
+            normal.Normalize();
+            // Ground, landings and anything else pushing up from below.
+            if (Mathf.Abs(normal.y) > GroundNormalY)
+            {
+                return;
+            }
+
+            var speed = Mathf.Abs(Vector3.Dot(collision.relativeVelocity, normal)) * Hardness(collision);
+            damage.Hit(point, normal, speed);
+        }
+
+        private float Hardness(Collision collision)
+        {
+            if (collision.collider.TryGetComponent<KnockableProp>(out var prop))
+            {
+                return prop.WasLyingBefore(Time.fixedTime) ? DebrisHardness : prop.DentHardness;
+            }
+
+            if (collision.rigidbody != null && collision.rigidbody.TryGetComponent<Vehicle>(out var other))
+            {
+                return Mathf.Clamp(other.body.mass / body.mass, 0.3f, 1.5f);
+            }
+
+            return 1f;
+        }
+
         // Traffic cars sit on their own layer, which ignores knocked-over props.
         private void ApplyLayer()
         {
@@ -167,6 +235,7 @@ namespace _Project.Vehicles
 
         private void OnCollisionEnter(Collision collision)
         {
+            Dent(collision);
             if (Mode != VehicleMode.Traffic || collision.rigidbody == null)
             {
                 return;

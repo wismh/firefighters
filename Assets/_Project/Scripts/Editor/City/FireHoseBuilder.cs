@@ -22,8 +22,8 @@ namespace _Project.Editor.City
         private const string MuzzleFlash = Fx + "Prefabs/Combat/Muzzleflash/LiquidMuzzle/LiquidMuzzleWater.prefab";
         private const string GroundSplashSource = Fx + "Prefabs/Environment/Water/Flowing/Sharp/WaterSplashSharp.prefab";
         private const string WallSplashSource = Fx + "Prefabs/Combat/Explosions/LiquidExplosion/LiquidExplosionWater.prefab";
-        private const string SoftGlow = Fx + "Materials/Basics/glow1_AB.mat";
-        private const string StretchyDrop = Fx + "Materials/Basics/circlestretchy_AB.mat";
+        internal const string SoftGlow = Fx + "Materials/Basics/glow1_AB.mat";
+        internal const string StretchyDrop = Fx + "Materials/Basics/circlestretchy_AB.mat";
         private const string WaterBody = Fx + "Materials/Misc/Liquid/water_3x3.mat";
         private const string FxFolder = "Assets/_Project/Prefabs/Fx";
         private const string NozzlePrefab = FxFolder + "/HoseNozzle.prefab";
