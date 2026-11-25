@@ -68,6 +68,7 @@ namespace _Project.Editor.City
             MinimapBuilder.Apply(layout);
             ComedyBuilder.Apply();
             PedestrianBuilder.Apply();
+            CityNightBuilder.Apply();
             CityLightingSetup.Apply(true);
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -510,8 +511,10 @@ namespace _Project.Editor.City
         private static void AddLamp(CityLayout layout, Transform parent, Vector3 position, Vector3 towardRoad)
         {
             var lamp = (GameObject)PrefabUtility.InstantiatePrefab(layout.streetLamp, parent);
-            lamp.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, YawToFace(layout.streetLamp, towardRoad), 0f));
-            // The pole of lamp_mesh stands 1.4 m off its pivot; the head overhangs the other way.
+            // The pole of lamp_mesh stands 1.4 m off its pivot along local +Z; the head overhangs along -Z. The pole
+            // goes to the kerb, and the head over the road.
+            var rotation = Quaternion.LookRotation(-towardRoad);
+            lamp.transform.SetPositionAndRotation(position + towardRoad * (2f * 1.375f), rotation);
             AddCapsule(lamp, new Vector3(0f, 0f, 1.375f), 0.4f, 7.9f);
             AddBox(lamp, new Vector3(0f, 8.1f, -0.2f), new Vector3(0.6f, 0.9f, 3.4f));
             AddKnockable(lamp, 120f, 6f, 0.6f);

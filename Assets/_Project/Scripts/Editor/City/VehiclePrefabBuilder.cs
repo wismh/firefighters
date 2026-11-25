@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using _Project.Comedy;
 using _Project.FireHose;
+using _Project.Lighting;
 using _Project.Vehicles;
 using UnityEditor;
 using UnityEngine;
@@ -149,6 +150,7 @@ namespace _Project.Editor.City
                 var vehicle = root.AddComponent<Vehicle>();
                 vehicle.Setup(body, controller, exit, cameraTarget, bodyBounds.size.z, bodyBounds.size.x);
                 vehicle.SetDamage(AddDamage(root, bodyRenderers, bodyBounds));
+                AddLights(root, vehicle, bodyRenderers, bodyBounds);
                 if (source.name.Contains("fire_truck"))
                 {
                     vehicle.SetHoseReel(AddHoseReel(root, bodyRenderers, bodyBounds));
@@ -197,6 +199,90 @@ namespace _Project.Editor.City
             var reel = root.AddComponent<FireHoseReel>();
             reel.Setup(attach);
             return reel;
+        }
+
+        /// <summary>
+        /// Two headlights with one beam between them and two tail lights, each stuck to the body where a ray from
+        /// the front or the back finds it.
+        /// </summary>
+        private static void AddLights(GameObject root, Vehicle vehicle, IReadOnlyList<MeshRenderer> bodyRenderers,
+            Bounds bodyBounds)
+        {
+            const float lampSize = 0.34f;
+            var height = bodyBounds.min.y + bodyBounds.size.y * 0.3f;
+            var lights = new GameObject("Lights").transform;
+            lights.SetParent(root.transform, false);
+            var head = CityNightBuilder.EnsureGlow("Headlight", new Color(4.5f, 4.1f, 3.2f));
+            var tail = CityNightBuilder.EnsureGlow("TailLight", new Color(3f, 0.15f, 0.1f));
+            var lamps = new List<Renderer>();
+            foreach (var x in new[] { -0.33f * bodyBounds.size.x, 0.33f * bodyBounds.size.x })
+            {
+                var front = new Vector3(x, height, bodyBounds.max.z + 1f);
+                var back = new Vector3(x, height, bodyBounds.min.z - 1f);
+                front.z = FindEnd(bodyRenderers, front, Vector3.back, bodyBounds.max.z);
+                back.z = FindEnd(bodyRenderers, back, Vector3.forward, bodyBounds.min.z);
+                lamps.Add(AddLamp(lights, front, lampSize, head));
+                lamps.Add(AddLamp(lights, back, lampSize * 0.8f, tail));
+            }
+
+            var beam = new GameObject("Beam").AddComponent<Light>();
+            beam.transform.SetParent(lights, false);
+            beam.transform.localPosition = new Vector3(0f, height + 0.2f, bodyBounds.max.z + 0.3f);
+            beam.transform.localRotation = Quaternion.Euler(9f, 0f, 0f);
+            beam.type = LightType.Spot;
+            beam.color = new Color(1f, 0.93f, 0.78f);
+            beam.spotAngle = 75f;
+            beam.innerSpotAngle = 30f;
+            beam.range = 32f;
+            beam.intensity = 220f;
+            beam.shadows = LightShadows.None;
+            root.AddComponent<VehicleLights>().Setup(vehicle, beam, lamps.ToArray());
+        }
+
+        private static Renderer AddLamp(Transform parent, Vector3 position, float size, Material material)
+        {
+            var lamp = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            lamp.name = material.name;
+            Object.DestroyImmediate(lamp.GetComponent<Collider>());
+            lamp.transform.SetParent(parent, false);
+            lamp.transform.localPosition = position;
+            lamp.transform.localScale = new Vector3(size, size * 0.7f, 0.12f);
+            var renderer = lamp.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            return renderer;
+        }
+
+        /// <summary>Local Z of the body surface a ray hits; <paramref name="fallback"/> if none.</summary>
+        private static float FindEnd(IReadOnlyList<MeshRenderer> bodyRenderers, Vector3 outside, Vector3 direction,
+            float fallback)
+        {
+            var colliders = new List<MeshCollider>();
+            foreach (var renderer in bodyRenderers)
+            {
+                var collider = renderer.gameObject.AddComponent<MeshCollider>();
+                collider.sharedMesh = renderer.GetComponent<MeshFilter>().sharedMesh;
+                colliders.Add(collider);
+            }
+
+            Physics.SyncTransforms();
+            var end = fallback;
+            var nearest = 3f;
+            foreach (var collider in colliders)
+            {
+                if (collider.Raycast(new Ray(outside, direction), out var hit, nearest))
+                {
+                    nearest = hit.distance;
+                    end = hit.point.z;
+                }
+            }
+
+            foreach (var collider in colliders)
+            {
+                Object.DestroyImmediate(collider);
+            }
+
+            return end;
         }
 
         /// <summary>

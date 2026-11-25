@@ -9,7 +9,7 @@ using UnityEngine.Rendering.Universal;
 namespace _Project.Editor.City
 {
     /// <summary>
-    /// Cartoon daylight for the city on PC: gradient ambient, baked sky reflection (no lightmaps),
+    /// Cartoon dusk for the city on PC: gradient ambient, baked sky reflection (no lightmaps),
     /// 4 shadow cascades, SSAO, Neutral tonemapping, a tuned procedural sky and matte pack materials.
     /// Everything is applied by code so a scene rebuild never loses it; the values live in assets
     /// (volume profile, sky material, lighting settings) and can be tweaked there.
@@ -25,12 +25,12 @@ namespace _Project.Editor.City
         private const string SsaoTypeName =
             "UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusion, Unity.RenderPipelines.Universal.Runtime";
 
-        // Gradient ambient, tuned against screenshots: shadowed walls keep their colour instead of going black.
-        private static readonly Color AmbientSky = new Color(0.62f, 0.72f, 0.9f);
-        private static readonly Color AmbientEquator = new Color(0.58f, 0.6f, 0.6f);
-        private static readonly Color AmbientGround = new Color(0.36f, 0.36f, 0.3f);
-        private static readonly Color FogColor = new Color(0.74f, 0.82f, 0.92f);
-        private static readonly Quaternion SunRotation = Quaternion.Euler(38f, -50f, 0f);
+        // Gradient ambient, tuned against screenshots: blue from above, walls out of the light stay readable.
+        private static readonly Color AmbientSky = new Color(0.25f, 0.29f, 0.5f);
+        private static readonly Color AmbientEquator = new Color(0.31f, 0.26f, 0.36f);
+        private static readonly Color AmbientGround = new Color(0.13f, 0.12f, 0.17f);
+        private static readonly Color FogColor = new Color(0.5f, 0.3f, 0.4f);
+        private static readonly Quaternion SunRotation = Quaternion.Euler(7f, -50f, 0f);
 
         [MenuItem("Tools/City/Apply Lighting")]
         public static void ApplyMenu()
@@ -140,8 +140,8 @@ namespace _Project.Editor.City
             }
 
             sun.transform.rotation = SunRotation;
-            sun.color = new Color(1f, 0.95f, 0.86f);
-            sun.intensity = 1.6f;
+            sun.color = new Color(1f, 0.5f, 0.32f);
+            sun.intensity = 0.8f;
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = 1f;
             if (!sun.TryGetComponent<UniversalAdditionalLightData>(out var data))
@@ -167,26 +167,22 @@ namespace _Project.Editor.City
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = FogColor;
-            RenderSettings.fogStartDistance = 200f;
-            RenderSettings.fogEndDistance = 620f;
+            RenderSettings.fogStartDistance = 90f;
+            RenderSettings.fogEndDistance = 520f;
         }
 
         private static Material EnsureSkyMaterial()
         {
             var sky = AssetDatabase.LoadAssetAtPath<Material>(SkyPath);
+            var shader = Shader.Find("Project/Dusk Sky");
             if (sky == null)
             {
-                sky = new Material(Shader.Find("Skybox/Procedural"));
+                sky = new Material(shader);
                 AssetDatabase.CreateAsset(sky, SkyPath);
             }
 
-            sky.SetFloat("_SunDisk", 2f);
-            sky.SetFloat("_SunSize", 0.035f);
-            sky.SetFloat("_SunSizeConvergence", 6f);
-            sky.SetFloat("_AtmosphereThickness", 0.75f);
-            sky.SetColor("_SkyTint", new Color(0.45f, 0.6f, 0.85f));
-            sky.SetColor("_GroundColor", new Color(0.42f, 0.46f, 0.38f));
-            sky.SetFloat("_Exposure", 1.25f);
+            // The colours live in the material; its shader's defaults are the tuned dusk.
+            sky.shader = shader;
             EditorUtility.SetDirty(sky);
             return sky;
         }
@@ -209,8 +205,8 @@ namespace _Project.Editor.City
             color.saturation.Override(12f);
 
             var bloom = Component<Bloom>(profile);
-            bloom.threshold.Override(1.1f);
-            bloom.intensity.Override(0.35f);
+            bloom.threshold.Override(1.0f);
+            bloom.intensity.Override(0.5f);
             bloom.scatter.Override(0.6f);
 
             var vignette = Component<Vignette>(profile);
