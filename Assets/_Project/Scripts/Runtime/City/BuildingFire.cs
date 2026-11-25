@@ -67,6 +67,11 @@ namespace _Project.City
         [SerializeField] private Vector2 reigniteDelay = new Vector2(10f, 16f);
         [SerializeField] private float reigniteStrength = 0.3f;
 
+        [Header("Heat")]
+        [Tooltip("A player this close to a flame, metres, starts to burn.")]
+        [SerializeField] private float flameHeatRadius = 2.6f;
+        [SerializeField] private float flameHeatHeight = 3.5f;
+
         [Header("Burn-out")]
         [SerializeField] private Color steamColor = new Color(0.86f, 0.86f, 0.84f, 0.6f);
         [SerializeField] private float steamTime = 4f;
@@ -142,6 +147,32 @@ namespace _Project.City
             }
 
             return hitFlame;
+        }
+
+        /// <summary>How deep in the flames a point is, 0..1.</summary>
+        public float HeatAt(Vector3 point)
+        {
+            if (!IsBurning || !Area.Contains(point))
+            {
+                return 0f;
+            }
+
+            var heat = 0f;
+            for (var i = 0; i < flames.Length; i++)
+            {
+                var offset = point - flames[i].root.position;
+                var height = offset.y;
+                offset.y = 0f;
+                if (height < -flameHeatHeight * 0.4f || height > flameHeatHeight)
+                {
+                    continue;
+                }
+
+                var near = Mathf.InverseLerp(flameHeatRadius, flameHeatRadius * 0.45f, offset.magnitude);
+                heat = Mathf.Max(heat, near * Mathf.Sqrt(flames[i].Strength));
+            }
+
+            return heat;
         }
 
         /// <summary>

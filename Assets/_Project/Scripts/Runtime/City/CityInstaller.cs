@@ -32,6 +32,7 @@ namespace _Project.City
             Container.Bind<WaterNozzle>().FromComponentInHierarchy().AsSingle();
             Container.Bind<BuildingFire>().FromComponentsInHierarchy().AsTransient();
             Container.BindInterfacesAndSelfTo<FireService>().AsSingle();
+            Container.Bind<BurningView>().FromComponentInHierarchy().AsSingle();
             Container.Bind<PedestrianSystem>().FromComponentInHierarchy().AsSingle();
             Container.Bind<KnockableProp>().FromComponentsInHierarchy().AsTransient();
 

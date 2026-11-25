@@ -69,6 +69,7 @@ namespace _Project.Editor.City
             ComedyBuilder.Apply();
             PedestrianBuilder.Apply();
             CityNightBuilder.Apply();
+            BurningBuilder.Apply();
             CityLightingSetup.Apply(true);
 
             EditorSceneManager.MarkSceneDirty(scene);

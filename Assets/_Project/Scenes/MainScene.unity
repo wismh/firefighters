@@ -32164,6 +32164,8 @@ MonoBehaviour:
   reigniteNeighbourStrength: 0.8
   reigniteDelay: {x: 10, y: 16}
   reigniteStrength: 0.3
+  flameHeatRadius: 2.6
+  flameHeatHeight: 3.5
   steamColor: {r: 0.86, g: 0.86, b: 0.84, a: 0.6}
   steamTime: 4
 --- !u!1001 &207741358
@@ -50802,6 +50804,78 @@ CapsuleCollider:
   m_Height: 4
   m_Direction: 1
   m_Center: {x: 0, y: 2, z: 0}
+--- !u!1 &337048666
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 337048669}
+  - component: {fileID: 337048668}
+  - component: {fileID: 337048667}
+  m_Layer: 0
+  m_Name: Flames
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &337048667
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 337048666}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
+  m_Material: {fileID: 2100000, guid: df77e1138a8eaf74ca22be4f7fc100bd, type: 2}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Texture: {fileID: 0}
+  m_UVRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
+--- !u!222 &337048668
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 337048666}
+  m_CullTransparentMesh: 1
+--- !u!224 &337048669
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 337048666}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1408537709}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &338092596
 GameObject:
   m_ObjectHideFlags: 0
@@ -57158,6 +57232,8 @@ MonoBehaviour:
   reigniteNeighbourStrength: 0.8
   reigniteDelay: {x: 10, y: 16}
   reigniteStrength: 0.3
+  flameHeatRadius: 2.6
+  flameHeatHeight: 3.5
   steamColor: {r: 0.86, g: 0.86, b: 0.84, a: 0.6}
   steamTime: 4
 --- !u!1 &390223963
@@ -65641,6 +65717,8 @@ MonoBehaviour:
   reigniteNeighbourStrength: 0.8
   reigniteDelay: {x: 10, y: 16}
   reigniteStrength: 0.3
+  flameHeatRadius: 2.6
+  flameHeatHeight: 3.5
   steamColor: {r: 0.86, g: 0.86, b: 0.84, a: 0.6}
   steamTime: 4
 --- !u!1001 &450149530
@@ -102594,6 +102672,8 @@ MonoBehaviour:
   sprintSpeed: 9
   acceleration: 40
   jumpHeight: 1.4
+  slideDeceleration: 11
+  tumbleAngle: 38
   gravity: -22
   mouseSensitivity: 0.12
   stickLookSpeed: 160
@@ -142870,6 +142950,8 @@ MonoBehaviour:
   reigniteNeighbourStrength: 0.8
   reigniteDelay: {x: 10, y: 16}
   reigniteStrength: 0.3
+  flameHeatRadius: 2.6
+  flameHeatHeight: 3.5
   steamColor: {r: 0.86, g: 0.86, b: 0.84, a: 0.6}
   steamTime: 4
 --- !u!1001 &1021156236
@@ -171298,7 +171380,10 @@ MonoBehaviour:
   vehicleCamera: {fileID: 1228372353}
   startVehicle: {fileID: 1419287393}
   enterRadius: 4
-  maxExitSpeed: 4
+  jumpOutSpeed: 4
+  jumpOutVelocityKept: 0.7
+  jumpOutSideSpeed: 4
+  coastSeconds: 1.5
   onFootRadius: 0.6
   drivenRadius: 2.5
   nozzle: {fileID: 1609903250985123155}
@@ -198098,6 +198183,100 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: 9054c70a5c9ed454f8ef48a11963db28, type: 3}
+--- !u!1 &1408537705
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1408537709}
+  - component: {fileID: 1408537708}
+  - component: {fileID: 1408537707}
+  - component: {fileID: 1408537706}
+  m_Layer: 0
+  m_Name: BurningScreen
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1408537706
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1408537705}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5893a1df49fa52541b9047e987e8176d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::_Project.FireHose.BurningView
+  overlay: {fileID: 337048667}
+  volume: {fileID: 1408537707}
+  walker: {fileID: 710569035}
+--- !u!114 &1408537707
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1408537705}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
+  m_IsGlobal: 1
+  priority: 10
+  blendDistance: 0
+  weight: 0
+  sharedProfile: {fileID: 11400000, guid: 71a918e6e84ac7b4ebd0b159336af7ba, type: 2}
+--- !u!223 &1408537708
+Canvas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1408537705}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_RenderMode: 0
+  m_Camera: {fileID: 0}
+  m_PlaneDistance: 100
+  m_PixelPerfect: 0
+  m_ReceivesEvents: 1
+  m_OverrideSorting: 0
+  m_OverridePixelPerfect: 0
+  m_SortingBucketNormalizedSize: 0
+  m_VertexColorAlwaysGammaSpace: 0
+  m_AdditionalShaderChannelsFlag: 0
+  m_UpdateRectTransformForStandalone: 0
+  m_SortingLayerID: 0
+  m_SortingOrder: 5
+  m_TargetDisplay: 0
+--- !u!224 &1408537709
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1408537705}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 337048669}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0, y: 0}
 --- !u!1001 &1408624892
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -324822,3 +325001,4 @@ SceneRoots:
   - {fileID: 1625730912}
   - {fileID: 2047547864}
   - {fileID: 1777056473}
+  - {fileID: 1408537709}

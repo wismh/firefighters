@@ -92,7 +92,7 @@ namespace _Project.Comedy
                 var size = Mathf.RoundToInt(26f * entry.Scale * pop);
                 style.fontSize = size;
                 shadow.fontSize = size;
-                var rect = new Rect(screen.x - 150f, Screen.height - screen.y - 20f, 300f, 40f);
+                var rect = new Rect(screen.x - 400f, Screen.height - screen.y - 35f, 800f, 70f);
                 var color = entry.Color;
                 color.a = alpha;
                 shadow.normal.textColor = new Color(0f, 0f, 0f, alpha * 0.8f);

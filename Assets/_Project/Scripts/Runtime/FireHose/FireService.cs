@@ -38,6 +38,18 @@ namespace _Project.FireHose
         public int Total => _fires.Count;
         public int Burning { get; private set; }
 
+        /// <summary>How deep in the flames of any building a point is, 0..1.</summary>
+        public float HeatAt(Vector3 point)
+        {
+            var heat = 0f;
+            foreach (var fire in _fires)
+            {
+                heat = Mathf.Max(heat, fire.HeatAt(point));
+            }
+
+            return heat;
+        }
+
         public void Initialize()
         {
             Burning = _fires.Count;

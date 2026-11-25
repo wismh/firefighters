@@ -13,6 +13,9 @@ namespace _Project.Player
         [SerializeField] private float sprintSpeed = 9f;
         [SerializeField] private float acceleration = 40f;
         [SerializeField] private float jumpHeight = 1.4f;
+        [Tooltip("Deceleration while sliding after a jump from a car.")]
+        [SerializeField] private float slideDeceleration = 11f;
+        [SerializeField] private float tumbleAngle = 38f;
         [SerializeField] private float gravity = -22f;
         [SerializeField] private float mouseSensitivity = 0.12f;
         [SerializeField] private float stickLookSpeed = 160f;
@@ -20,6 +23,8 @@ namespace _Project.Player
         private PlayerInputs _inputs;
         private Vector3 _horizontalVelocity;
         private float _verticalVelocity;
+        private float _tumble;
+        private bool _sliding;
         private float _pitch;
         private HoseRope _leash;
         private bool _leashed;
@@ -43,6 +48,15 @@ namespace _Project.Player
         {
             _leashed = false;
             _leash = null;
+        }
+
+        /// <summary>Throws the body at a velocity; it slides to a halt while the view tumbles.</summary>
+        public void Throw(Vector3 velocity)
+        {
+            _horizontalVelocity = new Vector3(velocity.x, 0f, velocity.z);
+            _sliding = true;
+            _tumble = Mathf.Clamp01(_horizontalVelocity.magnitude / 15f);
+            Launch(Mathf.Max(velocity.y, 2.5f));
         }
 
         /// <summary>Throws the body up at <paramref name="upSpeed"/> m/s unless it already rises faster.</summary>
@@ -71,13 +85,19 @@ namespace _Project.Player
                 var look = _inputs.LookDelta(mouseSensitivity, stickLookSpeed);
                 transform.Rotate(0f, look.x, 0f, Space.Self);
                 _pitch = Mathf.Clamp(_pitch - look.y, -85f, 85f);
-                cameraPivot.localRotation = Quaternion.Euler(_pitch, 0f, 0f);
             }
+
+            // The tumble dies out as a few rolls from side to side.
+            _tumble = Mathf.MoveTowards(_tumble, 0f, dt * 0.8f);
+            var roll = Mathf.Sin(_tumble * 14f) * _tumble * tumbleAngle;
+            cameraPivot.localRotation = Quaternion.Euler(_pitch + Mathf.Abs(roll) * 0.4f, 0f, roll);
 
             var move = _inputs.Move.ReadValue<Vector2>();
             var speed = _inputs.Sprint.IsPressed() ? sprintSpeed : walkSpeed;
             var target = (transform.right * move.x + transform.forward * move.y) * speed;
-            _horizontalVelocity = Vector3.MoveTowards(_horizontalVelocity, target, acceleration * dt);
+            _sliding &= _horizontalVelocity.magnitude > walkSpeed * 0.4f;
+            _horizontalVelocity = Vector3.MoveTowards(_horizontalVelocity, _sliding ? Vector3.zero : target,
+                (_sliding ? slideDeceleration : acceleration) * dt);
 
             if (character.isGrounded)
             {

@@ -31,6 +31,8 @@ namespace _Project.Comedy
         // Below this speed the player's car was hit rather than hitting.
         private const float RammedSpeed = 3f;
         private const float ScaredLineCooldown = 0.6f;
+        private const float BurningLineInterval = 2.2f;
+        private const float BurningShakeInterval = 0.25f;
 
         private static readonly ComedyFxId[] SoakedFaces =
         {
@@ -70,6 +72,13 @@ namespace _Project.Comedy
         private static readonly string[] GhostLines =
         {
             "Моральна шкода!", "Я буду скаржитись!", "Де ти вчився водити?!", "Поверніть мене назад!",
+        };
+
+        private static readonly string[] JumpLines = { "ГЕРОНІМО!", "Далі сама!", "Ай! Ой! Ух!", "Гальма для слабаків!" };
+
+        private static readonly string[] BurningLines =
+        {
+            "Гаряче-гаряче-гаряче!", "Я ПАЛАЮ!", "Запахло шашликом!", "Я пожежник, а не дрова!", "Мої брови!",
         };
 
         private static readonly string[] FlightLines = { "ЙІІІХУУ!", "Я лечууу!", "Вище за пожежу!" };
@@ -122,6 +131,9 @@ namespace _Project.Comedy
         private WaterNozzle _nozzle;
         private List<KnockableProp> _props;
         private PedestrianSystem _pedestrians;
+        private BurningView _burning;
+        private float _nextBurningLine;
+        private float _nextBurningShake;
         private float _nextScaredLine;
 
         private Vehicle _driven;
@@ -148,7 +160,8 @@ namespace _Project.Comedy
 
         [Inject]
         public void Construct(IParticleFxSpawnService<ComedyFxId> fx, ISfxPlayer sfx, TrafficSystem traffic,
-            FireService fires, WaterNozzle nozzle, List<KnockableProp> props, PedestrianSystem pedestrians)
+            FireService fires, WaterNozzle nozzle, List<KnockableProp> props, PedestrianSystem pedestrians,
+            BurningView burning)
         {
             _fx = fx;
             _sfx = sfx;
@@ -157,6 +170,7 @@ namespace _Project.Comedy
             _nozzle = nozzle;
             _props = props;
             _pedestrians = pedestrians;
+            _burning = burning;
         }
 
         private void Start()
@@ -174,6 +188,8 @@ namespace _Project.Comedy
             _pedestrians.Scared += OnPedestrianScared;
             _pedestrians.Soaked += OnPedestrianSoaked;
             _pedestrians.GhostAppeared += OnGhostAppeared;
+            _burning.CaughtFire += OnCaughtFire;
+            modes.JumpedOut += OnJumpedOut;
             modes.VehicleEntered += OnVehicleEntered;
             modes.VehicleExited += OnVehicleExited;
             if (modes.Driven != null)
@@ -197,6 +213,8 @@ namespace _Project.Comedy
             _pedestrians.Scared -= OnPedestrianScared;
             _pedestrians.Soaked -= OnPedestrianSoaked;
             _pedestrians.GhostAppeared -= OnGhostAppeared;
+            _burning.CaughtFire -= OnCaughtFire;
+            modes.JumpedOut -= OnJumpedOut;
             modes.VehicleEntered -= OnVehicleEntered;
             modes.VehicleExited -= OnVehicleExited;
             if (_driven != null)
@@ -223,6 +241,12 @@ namespace _Project.Comedy
 
         private void OnVehicleExited(Vehicle vehicle)
         {
+            // A runaway may stop after the player has taken another car.
+            if (vehicle != _driven)
+            {
+                return;
+            }
+
             vehicle.Crashed -= OnCrashed;
             _driven = null;
             SetTrail(false);
@@ -309,7 +333,7 @@ namespace _Project.Comedy
             Play(sounds.knockout, roof);
             _texts.Add(roof + Vector3.up * 4f, Pick(KnockedLines), ShoutColor);
             // A traffic car that drove into the standing fire truck is its own driver's fault.
-            if (modes.DrivingSpeed < RammedSpeed)
+            if (_driven == null || _driven.Controller.PreStepVelocity.magnitude < RammedSpeed)
             {
                 return;
             }
@@ -317,6 +341,47 @@ namespace _Project.Comedy
             var cost = _bill.AddKnockout();
             UpdateBillText();
             _texts.Add(roof + Vector3.up * 1.5f, Money(cost), MoneyColor, 0.8f);
+        }
+
+        private void OnJumpedOut(Vehicle vehicle, float speed)
+        {
+            var at = walker.transform.position;
+            feel.Shake(Mathf.Clamp(speed * 0.04f, 0.3f, 0.8f));
+            Play(sounds.bigCrashThud, at, 0.7f);
+            _fx.SpawnParticle(ComedyFxId.DustPoof, at + Vector3.up * 0.3f);
+            _texts.Add(AheadOfView(6f), Pick(JumpLines), ShoutColor, 1.3f);
+        }
+
+        private void OnCaughtFire()
+        {
+            Play(sounds.propDown, walker.transform.position);
+            _nextBurningLine = 0f;
+        }
+
+        // The player in the flames complains and shakes until out of them.
+        private void UpdateBurning()
+        {
+            if (!_burning.IsBurning)
+            {
+                return;
+            }
+
+            if (Time.time >= _nextBurningShake)
+            {
+                _nextBurningShake = Time.time + BurningShakeInterval;
+                feel.Shake(0.4f * _burning.Heat);
+            }
+
+            if (Time.time >= _nextBurningLine)
+            {
+                _nextBurningLine = Time.time + BurningLineInterval;
+                _texts.Add(AheadOfView(5f), Pick(BurningLines), ShoutColor, 1.3f);
+            }
+        }
+
+        private Vector3 AheadOfView(float distance)
+        {
+            return viewCamera.transform.position + viewCamera.transform.forward * distance;
         }
 
         private void OnPedestrianHit(Pedestrian pedestrian)
@@ -385,6 +450,7 @@ namespace _Project.Comedy
             _billPulse = Mathf.Max(0f, _billPulse - Time.unscaledDeltaTime * 3f);
             UpdateFlight(dt);
             UpdateSoaking();
+            UpdateBurning();
             UpdateFinale(dt);
         }
 
@@ -674,7 +740,12 @@ namespace _Project.Comedy
                 return;
             }
 
-            _style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+            _style = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontStyle = FontStyle.Bold,
+                wordWrap = false,
+            };
             _shadow = new GUIStyle(_style);
             _hud = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperCenter, fontStyle = FontStyle.Bold };
             _hudShadow = new GUIStyle(_hud);

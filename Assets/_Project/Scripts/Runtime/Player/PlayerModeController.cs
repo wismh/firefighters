@@ -18,6 +18,10 @@ namespace _Project.Player
     public sealed class PlayerModeController : MonoBehaviour
     {
         private const int MaxNearbyColliders = 16;
+        private const float CarStoppedSpeed = 0.5f;
+        private const float RunawayBrakeSpeed = 1.5f;
+        // A car that will not settle (on its roof, in the air) is let go after this long.
+        private const float MaxRunawaySeconds = 12f;
         // Only the layers cars are on, so debris and ragdolls cannot crowd a car out of the buffer.
         private const int VehicleMask = (1 << PhysicsLayers.Default) | (1 << PhysicsLayers.Traffic);
 
@@ -28,7 +32,13 @@ namespace _Project.Player
         [Tooltip("The player starts the game driving this car.")]
         [SerializeField] private Vehicle startVehicle;
         [SerializeField] private float enterRadius = 4f;
-        [SerializeField] private float maxExitSpeed = 4f;
+        [Tooltip("Getting out faster than this is a jump: the car rolls on without a driver.")]
+        [SerializeField] private float jumpOutSpeed = 4f;
+        [Tooltip("Share of the car's velocity the player keeps when jumping out.")]
+        [Range(0f, 1f)] [SerializeField] private float jumpOutVelocityKept = 0.7f;
+        [SerializeField] private float jumpOutSideSpeed = 4f;
+        [Tooltip("The driverless car rolls freely this long, then brakes.")]
+        [SerializeField] private float coastSeconds = 1.5f;
         [SerializeField] private float onFootRadius = 0.6f;
         [SerializeField] private float drivenRadius = 2.5f;
         [SerializeField] private WaterNozzle nozzle;
@@ -44,6 +54,8 @@ namespace _Project.Player
         private FireService _fires;
         private string _fireText;
         private Vehicle _vehicle;
+        private Vehicle _runaway;
+        private float _runawayTime;
         private Vehicle _hintVehicle;
         private FireHoseReel _hintReel;
         private FireHoseReel _reel;
@@ -52,13 +64,19 @@ namespace _Project.Player
         /// <summary>Raised when the player gets into a car.</summary>
         public event System.Action<Vehicle> VehicleEntered;
 
-        /// <summary>Raised when the player gets out of a car.</summary>
+        /// <summary>Raised when the player jumps out of a moving car: the car and its speed, m/s.</summary>
+        public event System.Action<Vehicle, float> JumpedOut;
+
+        /// <summary>Raised when the player leaves a car; after a jump, once the car has come to a stop.</summary>
         public event System.Action<Vehicle> VehicleExited;
 
         public bool IsDriving => _vehicle != null;
 
         /// <summary>The car being driven, or null on foot.</summary>
         public Vehicle Driven => _vehicle;
+
+        /// <summary>The car being driven, or the one that still rolls after the player jumped out of it.</summary>
+        public Vehicle MovingCar => _vehicle != null ? _vehicle : _runaway;
         public bool IsHosing => _reel != null;
 
         /// <summary>What the minimap centres on: the car while driving, the body on foot.</summary>
@@ -106,6 +124,7 @@ namespace _Project.Player
         private void Update()
         {
             UpdateCursor();
+            UpdateRunaway();
             if (IsDriving)
             {
                 UpdateDriving();
@@ -199,8 +218,7 @@ namespace _Project.Player
         {
             var move = _inputs.Move.ReadValue<Vector2>();
             _vehicle.Controller.SetInput(move.y, move.x, _inputs.Jump.IsPressed());
-            var slowEnough = Mathf.Abs(_vehicle.Controller.ForwardSpeed) < maxExitSpeed;
-            if (slowEnough && _inputs.Interact.WasPressedThisFrame())
+            if (_inputs.Interact.WasPressedThisFrame())
             {
                 Exit();
             }
@@ -211,6 +229,12 @@ namespace _Project.Player
             if (vehicle.Mode == VehicleMode.Traffic)
             {
                 _traffic.Detach(vehicle);
+            }
+
+            if (_runaway != null)
+            {
+                // Back in the runaway it is simply driven again; any other car leaves it to stop by itself.
+                ReleaseRunaway(vehicle != _runaway);
             }
 
             _vehicle = vehicle;
@@ -230,14 +254,70 @@ namespace _Project.Player
         private void Exit()
         {
             var vehicle = _vehicle;
+            var velocity = vehicle.Body.linearVelocity;
+            var jumping = velocity.magnitude > jumpOutSpeed;
+            var exit = FindExitPosition(vehicle);
             _vehicle = null;
-            vehicle.SetMode(VehicleMode.Parked);
+            if (jumping)
+            {
+                // Still "driven" while it rolls, so it knocks lamps, cars and people over like one.
+                _runaway = vehicle;
+                _runawayTime = 0f;
+                vehicle.Controller.SetInput(0f, 0f, false);
+            }
+            else
+            {
+                vehicle.SetMode(VehicleMode.Parked);
+            }
+
             vehicleCamera.Stop();
 
             walker.gameObject.SetActive(true);
-            walker.Teleport(FindExitPosition(vehicle), vehicle.transform.eulerAngles.y);
+            walker.Teleport(exit, vehicle.transform.eulerAngles.y);
             AttachCameraToHead();
             _traffic.SetFocus(walker.transform, onFootRadius, null);
+            if (!jumping)
+            {
+                VehicleExited?.Invoke(vehicle);
+                return;
+            }
+
+            var outward = Vector3.ProjectOnPlane(exit - vehicle.transform.position, Vector3.up).normalized;
+            walker.Throw(velocity * jumpOutVelocityKept + outward * jumpOutSideSpeed);
+            JumpedOut?.Invoke(vehicle, velocity.magnitude);
+        }
+
+        private void UpdateRunaway()
+        {
+            if (_runaway == null)
+            {
+                return;
+            }
+
+            _runawayTime += Time.deltaTime;
+            var braking = _runawayTime > coastSeconds;
+            var forward = _runaway.Controller.ForwardSpeed;
+            // Throttle against the motion is the foot brake.
+            var pedal = braking && Mathf.Abs(forward) > RunawayBrakeSpeed ? -Mathf.Sign(forward) : 0f;
+            _runaway.Controller.SetInput(pedal, 0f, braking);
+            // The traffic may have taken a far car back into its pool meanwhile.
+            var gone = !_runaway.isActiveAndEnabled || _runaway.Mode != VehicleMode.Driven;
+            var stopped = _runawayTime > 0.5f && _runaway.Speed < CarStoppedSpeed;
+            if (gone || stopped || _runawayTime > MaxRunawaySeconds)
+            {
+                ReleaseRunaway(!gone);
+            }
+        }
+
+        private void ReleaseRunaway(bool park)
+        {
+            var vehicle = _runaway;
+            _runaway = null;
+            if (park)
+            {
+                vehicle.SetMode(VehicleMode.Parked);
+            }
+
             VehicleExited?.Invoke(vehicle);
         }
 
@@ -329,7 +409,7 @@ namespace _Project.Player
         {
             if (IsDriving)
             {
-                return "WASD — кермо, Space — ручник, E — вийти (на малій швидкості)";
+                return "WASD — кермо, Space — ручник, E — вийти (на ходу — вистрибнути)";
             }
 
             if (IsHosing)

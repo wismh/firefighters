@@ -157,7 +157,7 @@ namespace _Project.Pedestrians
 
         private void FixedUpdate()
         {
-            var car = modes.Driven;
+            var car = modes.MovingCar;
             if (car == null)
             {
                 return;
