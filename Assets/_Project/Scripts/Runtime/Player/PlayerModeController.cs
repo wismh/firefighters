@@ -46,7 +46,16 @@ namespace _Project.Player
         private FireHoseReel _reel;
         private bool _atReel;
 
+        /// <summary>Raised when the player gets into a car.</summary>
+        public event System.Action<Vehicle> VehicleEntered;
+
+        /// <summary>Raised when the player gets out of a car.</summary>
+        public event System.Action<Vehicle> VehicleExited;
+
         public bool IsDriving => _vehicle != null;
+
+        /// <summary>The car being driven, or null on foot.</summary>
+        public Vehicle Driven => _vehicle;
         public bool IsHosing => _reel != null;
 
         /// <summary>What the minimap centres on: the car while driving, the body on foot.</summary>
@@ -212,6 +221,7 @@ namespace _Project.Player
             walker.gameObject.SetActive(false);
             cameraTransform.SetParent(null, true);
             vehicleCamera.Follow(vehicle);
+            VehicleEntered?.Invoke(vehicle);
         }
 
         private void Exit()
@@ -225,6 +235,7 @@ namespace _Project.Player
             walker.Teleport(FindExitPosition(vehicle), vehicle.transform.eulerAngles.y);
             AttachCameraToHead();
             _traffic.SetFocus(walker.transform, onFootRadius, null);
+            VehicleExited?.Invoke(vehicle);
         }
 
         private Vector3 FindExitPosition(Vehicle vehicle)

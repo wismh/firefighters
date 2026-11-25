@@ -66,6 +66,7 @@ namespace _Project.Editor.City
             CreateSceneContext();
             FireHoseBuilder.Apply(layout);
             MinimapBuilder.Apply(layout);
+            ComedyBuilder.Apply();
             CityLightingSetup.Apply(true);
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -599,7 +600,9 @@ namespace _Project.Editor.City
 
         private static void AddKnockable(GameObject instance, float mass, float breakSpeed, float dentHardness)
         {
-            instance.AddComponent<KnockableProp>().Setup(mass, breakSpeed, dentHardness, 0.9f, EnsureDebrisMaterial());
+            var prop = instance.AddComponent<KnockableProp>();
+            prop.Setup(mass, breakSpeed, dentHardness, 0.9f, EnsureDebrisMaterial());
+            prop.SetKind(ComedyBuilder.KindOf(instance));
         }
 
         private static PhysicsMaterial EnsureDebrisMaterial()
@@ -709,6 +712,22 @@ namespace _Project.Editor.City
             material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
             material.SetColor("_BaseColor", color);
             material.SetFloat("_Smoothness", 0.1f);
+            AssetDatabase.CreateAsset(material, path);
+            return material;
+        }
+
+        internal static Material EnsureUnlitMaterial(string name, Color color)
+        {
+            var path = $"{MaterialFolder}/{name}.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material != null)
+            {
+                return material;
+            }
+
+            Directory.CreateDirectory(MaterialFolder);
+            material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+            material.SetColor("_BaseColor", color);
             AssetDatabase.CreateAsset(material, path);
             return material;
         }

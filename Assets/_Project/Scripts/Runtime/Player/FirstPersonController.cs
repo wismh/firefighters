@@ -45,6 +45,14 @@ namespace _Project.Player
             _leash = null;
         }
 
+        /// <summary>Throws the body up at <paramref name="upSpeed"/> m/s unless it already rises faster.</summary>
+        public void Launch(float upSpeed)
+        {
+            _verticalVelocity = Mathf.Max(_verticalVelocity, upSpeed);
+            // A grounded controller resets the vertical speed next frame; lift it off the ground first.
+            character.Move(Vector3.up * 0.05f);
+        }
+
         /// <summary>Moves the body without the CharacterController fighting the teleport.</summary>
         public void Teleport(Vector3 position, float yaw)
         {

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using _Project.Comedy;
 using _Project.FireHose;
 using _Project.Vehicles;
 using UnityEditor;
@@ -151,6 +152,7 @@ namespace _Project.Editor.City
                 if (source.name.Contains("fire_truck"))
                 {
                     vehicle.SetHoseReel(AddHoseReel(root, bodyRenderers, bodyBounds));
+                    AddSiren(root, vehicle, bodyRenderers, bodyBounds);
                 }
 
                 var path = $"{OutputFolder}/{name}.prefab";
@@ -195,6 +197,50 @@ namespace _Project.Editor.City
             var reel = root.AddComponent<FireHoseReel>();
             reel.Setup(attach);
             return reel;
+        }
+
+        /// <summary>
+        /// A red and a blue beacon side by side on the cab roof, each with a point light that lights the street
+        /// around the truck while it flashes.
+        /// </summary>
+        private static void AddSiren(GameObject root, Vehicle vehicle, IReadOnlyList<MeshRenderer> bodyRenderers,
+            Bounds bodyBounds)
+        {
+            const float lampSize = 0.32f;
+            var z = bodyBounds.max.z - 1.2f;
+            var roof = FindTop(bodyRenderers, new Vector3(0f, bodyBounds.max.y + 2f, z), bodyBounds.max.y);
+            var siren = new GameObject("Siren").transform;
+            siren.SetParent(root.transform, false);
+            siren.localPosition = new Vector3(0f, roof + lampSize * 0.5f, z);
+
+            var red = AddBeacon(siren, "Red", -0.4f, new Color(1f, 0.15f, 0.1f), lampSize, out var redLight);
+            var blue = AddBeacon(siren, "Blue", 0.4f, new Color(0.15f, 0.35f, 1f), lampSize, out var blueLight);
+            root.AddComponent<SirenLights>().Setup(vehicle, redLight, blueLight, red, blue);
+        }
+
+        private static Renderer AddBeacon(Transform siren, string name, float x, Color color, float size,
+            out Light light)
+        {
+            var lamp = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            lamp.name = name;
+            Object.DestroyImmediate(lamp.GetComponent<Collider>());
+            lamp.transform.SetParent(siren, false);
+            lamp.transform.localPosition = new Vector3(x, 0f, 0f);
+            lamp.transform.localScale = new Vector3(size, size * 0.8f, size);
+            var renderer = lamp.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = CitySceneSetup.EnsureUnlitMaterial("SirenLamp", Color.white);
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            light = new GameObject(name + "Light").AddComponent<Light>();
+            light.transform.SetParent(lamp.transform.parent, false);
+            light.transform.localPosition = new Vector3(x, 0.4f, 0f);
+            light.type = LightType.Point;
+            light.color = color;
+            light.range = 14f;
+            light.intensity = 6f;
+            light.shadows = LightShadows.None;
+            light.enabled = false;
+            return renderer;
         }
 
         /// <summary>

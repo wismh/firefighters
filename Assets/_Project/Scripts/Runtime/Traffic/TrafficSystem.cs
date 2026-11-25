@@ -34,6 +34,9 @@ namespace _Project.Traffic
         private float _respawnTimer;
         private float _despawnTimer;
 
+        /// <summary>Raised after a traffic car hit by the player was taken out of traffic.</summary>
+        public event System.Action<Vehicle> KnockedOut;
+
         public TrafficSettings Settings => settings;
         public int ActiveCount => _agents.Count;
 
@@ -418,8 +421,14 @@ namespace _Project.Traffic
 
             var prefab = settings.vehiclePrefabs[Random.Range(0, settings.vehiclePrefabs.Length)];
             var vehicle = Instantiate(prefab, transform);
-            vehicle.KnockedOut += Detach;
+            vehicle.KnockedOut += OnKnockedOut;
             return vehicle;
+        }
+
+        private void OnKnockedOut(Vehicle vehicle)
+        {
+            Detach(vehicle);
+            KnockedOut?.Invoke(vehicle);
         }
 
         private void RemoveAgent(TrafficAgent agent)

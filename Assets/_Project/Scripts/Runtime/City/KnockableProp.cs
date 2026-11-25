@@ -19,6 +19,7 @@ namespace _Project.City
 
         private static readonly List<Collider> Colliders = new List<Collider>(4);
 
+        [SerializeField] private PropKind kind;
         [SerializeField] private float mass = 100f;
         [Tooltip("Relative speed of the hit, m/s, that knocks the prop over.")]
         [SerializeField] private float breakSpeed = 5f;
@@ -36,6 +37,10 @@ namespace _Project.City
 
         public bool IsKnocked { get; private set; }
         public float DentHardness => dentHardness;
+        public PropKind Kind => kind;
+
+        /// <summary>Velocity of the car at the moment it knocked this prop over.</summary>
+        public Vector3 HitVelocity { get; private set; }
 
         private float _knockedAt;
 
@@ -53,6 +58,11 @@ namespace _Project.City
             dentHardness = hardness;
             carSpeedKept = speedKept;
             fallenMaterial = material;
+        }
+
+        public void SetKind(PropKind propKind)
+        {
+            kind = propKind;
         }
 
         private void OnCollisionEnter(Collision collision)
@@ -76,6 +86,7 @@ namespace _Project.City
             _knockedAt = Time.fixedTime;
             // The solver has already stopped the car against the still static collider; give its speed back.
             var carVelocity = vehicle.Controller.PreStepVelocity;
+            HitVelocity = carVelocity;
             vehicle.HitProp(point, carSpeedKept);
 
             SetLayer(transform, PhysicsLayers.Debris);

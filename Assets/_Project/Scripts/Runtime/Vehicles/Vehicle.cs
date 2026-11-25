@@ -40,6 +40,27 @@ namespace _Project.Vehicles
         /// <summary>Raised when this car knocks a street prop over: the contact point and the velocity lost.</summary>
         public event Action<Vector3, Vector3> PropHit;
 
+        /// <summary>Raised when the body dents: the car, the dent's centre, and its depth in metres.</summary>
+        public event Action<Vehicle, Vector3, float> Crashed;
+
+        /// <summary>No wheel touches anything: the car is flying.</summary>
+        public bool IsAirborne
+        {
+            get
+            {
+                var wheels = controller.Wheels;
+                for (var i = 0; i < wheels.Length; i++)
+                {
+                    if (wheels[i].collider.isGrounded)
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        }
+
         public VehicleMode Mode { get; private set; } = VehicleMode.Traffic;
         public Rigidbody Body => body;
         public VehicleController Controller => controller;
@@ -204,7 +225,11 @@ namespace _Project.Vehicles
             }
 
             var speed = Mathf.Abs(Vector3.Dot(collision.relativeVelocity, normal)) * Hardness(collision);
-            damage.Hit(point, normal, speed);
+            var depth = damage.Hit(point, normal, speed);
+            if (depth > 0f)
+            {
+                Crashed?.Invoke(this, point, depth);
+            }
         }
 
         private float Hardness(Collision collision)

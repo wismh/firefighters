@@ -31,6 +31,9 @@ namespace _Project.FireHose
         /// <summary>Raised when a building is put out; carries the number still burning.</summary>
         public event Action<int> FireOut;
 
+        /// <summary>Raised when a building is put out, before <see cref="FireOut"/>.</summary>
+        public event Action<BuildingFire> BuildingSaved;
+
         public IReadOnlyList<BuildingFire> Fires => _fires;
         public int Total => _fires.Count;
         public int Burning { get; private set; }
@@ -85,6 +88,7 @@ namespace _Project.FireHose
         private void OnExtinguished(BuildingFire fire)
         {
             Burning--;
+            BuildingSaved?.Invoke(fire);
             FireOut?.Invoke(Burning);
         }
     }

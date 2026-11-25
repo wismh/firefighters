@@ -1,3 +1,4 @@
+using _Project.Comedy;
 using _Project.FireHose;
 using _Project.Player;
 using _Project.Traffic;
@@ -14,6 +15,7 @@ namespace _Project.City
         [SerializeField] private PooledParticleFxView groundSplash;
         [SerializeField] private PooledParticleFxView wallSplash;
         [SerializeField] private PooledParticleFxView steam;
+        [SerializeField] private ComedyFxEntry[] comedyFx;
 
         public override void InstallBindings()
         {
@@ -29,6 +31,16 @@ namespace _Project.City
             Container.Bind<WaterNozzle>().FromComponentInHierarchy().AsSingle();
             Container.Bind<BuildingFire>().FromComponentsInHierarchy().AsTransient();
             Container.BindInterfacesAndSelfTo<FireService>().AsSingle();
+            Container.Bind<KnockableProp>().FromComponentsInHierarchy().AsTransient();
+
+            var comedy = new ParticleFxPoolBinding<ComedyFxId>[comedyFx.Length];
+            for (var i = 0; i < comedyFx.Length; i++)
+            {
+                var entry = comedyFx[i];
+                comedy[i] = new ParticleFxPoolBinding<ComedyFxId>(entry.id, entry.prefab, entry.poolSize);
+            }
+
+            ParticleFxPoolsInstaller<ComedyFxId>.Install(Container, comedy, transform);
         }
     }
 }
