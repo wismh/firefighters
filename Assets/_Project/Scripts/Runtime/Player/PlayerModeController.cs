@@ -1,3 +1,4 @@
+using _Project.City;
 using _Project.FireHose;
 using _Project.Traffic;
 using _Project.Vehicles;
@@ -17,6 +18,8 @@ namespace _Project.Player
     public sealed class PlayerModeController : MonoBehaviour
     {
         private const int MaxNearbyColliders = 16;
+        // Only the layers cars are on, so debris and ragdolls cannot crowd a car out of the buffer.
+        private const int VehicleMask = (1 << PhysicsLayers.Default) | (1 << PhysicsLayers.Traffic);
 
         [SerializeField] private FirstPersonController walker;
         [SerializeField] private CharacterController character;
@@ -262,7 +265,7 @@ namespace _Project.Player
         private Vehicle FindNearestVehicle()
         {
             var count = Physics.OverlapSphereNonAlloc(walker.transform.position, enterRadius, _nearby,
-                ~0, QueryTriggerInteraction.Ignore);
+                VehicleMask, QueryTriggerInteraction.Ignore);
             Vehicle best = null;
             var bestDistance = float.MaxValue;
             for (var i = 0; i < count; i++)

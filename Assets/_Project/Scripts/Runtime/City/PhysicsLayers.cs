@@ -9,5 +9,7 @@ namespace _Project.City
         public const int Default = 0;
         public const int Traffic = 8;
         public const int Debris = 9;
+        /// <summary>Pedestrians on their feet: seen by rays (the hose), collide with nothing.</summary>
+        public const int Pedestrian = 10;
     }
 }

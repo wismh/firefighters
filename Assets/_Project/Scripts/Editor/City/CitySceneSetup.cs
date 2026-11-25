@@ -67,6 +67,7 @@ namespace _Project.Editor.City
             FireHoseBuilder.Apply(layout);
             MinimapBuilder.Apply(layout);
             ComedyBuilder.Apply();
+            PedestrianBuilder.Apply();
             CityLightingSetup.Apply(true);
 
             EditorSceneManager.MarkSceneDirty(scene);

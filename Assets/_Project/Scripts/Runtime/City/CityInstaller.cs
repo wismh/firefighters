@@ -1,5 +1,6 @@
 using _Project.Comedy;
 using _Project.FireHose;
+using _Project.Pedestrians;
 using _Project.Player;
 using _Project.Traffic;
 using MyToolkit.ParticleFx;
@@ -31,6 +32,7 @@ namespace _Project.City
             Container.Bind<WaterNozzle>().FromComponentInHierarchy().AsSingle();
             Container.Bind<BuildingFire>().FromComponentsInHierarchy().AsTransient();
             Container.BindInterfacesAndSelfTo<FireService>().AsSingle();
+            Container.Bind<PedestrianSystem>().FromComponentInHierarchy().AsSingle();
             Container.Bind<KnockableProp>().FromComponentsInHierarchy().AsTransient();
 
             var comedy = new ParticleFxPoolBinding<ComedyFxId>[comedyFx.Length];

@@ -18,6 +18,7 @@ namespace _Project.Traffic
         private const int PathLength = 3;
         private const float ObstacleLookAhead = 35f;
         private const float StopLineMargin = 1f;
+        private const float PedestrianRadius = 0.5f;
 
         [SerializeField] private TrafficSettings settings;
 
@@ -27,6 +28,7 @@ namespace _Project.Traffic
         private readonly Dictionary<Vehicle, TrafficAgent> _agentByVehicle = new Dictionary<Vehicle, TrafficAgent>(64);
         private readonly List<Vehicle> _detached = new List<Vehicle>(16);
 
+        private List<Vector3> _pedestrians = new List<Vector3>();
         private RoadNetwork _network;
         private Transform _focus;
         private float _focusRadius;
@@ -61,6 +63,12 @@ namespace _Project.Traffic
             {
                 _detached.Remove(playerVehicle);
             }
+        }
+
+        /// <summary>People on the asphalt, whom the traffic gives way to. Read every physics step.</summary>
+        public void SetPedestrians(List<Vector3> onRoad)
+        {
+            _pedestrians = onRoad;
         }
 
         /// <summary>Takes a car out of traffic (the player enters it, or it was knocked out) and parks it.</summary>
@@ -266,6 +274,12 @@ namespace _Project.Traffic
                 var parked = _detached[i];
                 CheckObstacle(agent, position, forward, right, halfWidth, parked.transform.position,
                     parked.HalfLength * 0.8f, ref gap, ref leaderSpeed);
+            }
+
+            for (var i = 0; i < _pedestrians.Count; i++)
+            {
+                CheckObstacle(agent, position, forward, right, halfWidth, _pedestrians[i], PedestrianRadius, ref gap,
+                    ref leaderSpeed);
             }
         }
 

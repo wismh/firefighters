@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using _Project.City;
 using _Project.FireHose;
+using _Project.Pedestrians;
 using _Project.Player;
 using _Project.Traffic;
 using _Project.Vehicles;
@@ -29,6 +30,7 @@ namespace _Project.Comedy
         private const float ReportDuration = 14f;
         // Below this speed the player's car was hit rather than hitting.
         private const float RammedSpeed = 3f;
+        private const float ScaredLineCooldown = 0.6f;
 
         private static readonly ComedyFxId[] SoakedFaces =
         {
@@ -55,10 +57,26 @@ namespace _Project.Comedy
             "Мій бампер!", "Ти права купив?!", "Я дзвоню мамі!", "Страховка не покриє!", "ЩО?!",
         };
 
+        private static readonly string[] ScaredLines =
+        {
+            "ААААА!", "Рятуйте!", "Це ж тротуар!", "Я ще не застрахувався!", "Мамо!",
+        };
+
+        private static readonly string[] SoakedPedestrianLines =
+        {
+            "Я не горів!", "Буль!", "Це був новий костюм!", "Душ я не замовляв!",
+        };
+
+        private static readonly string[] GhostLines =
+        {
+            "Моральна шкода!", "Я буду скаржитись!", "Де ти вчився водити?!", "Поверніть мене назад!",
+        };
+
         private static readonly string[] FlightLines = { "ЙІІІХУУ!", "Я лечууу!", "Вище за пожежу!" };
 
         private static readonly Color MoneyColor = new Color(1f, 0.35f, 0.3f);
         private static readonly Color GoodColor = new Color(0.45f, 1f, 0.45f);
+        private static readonly Color GhostColor = new Color(0.75f, 0.9f, 1f);
         private static readonly Color ShoutColor = new Color(1f, 0.95f, 0.55f);
 
         [SerializeField] private PlayerModeController modes;
@@ -103,6 +121,8 @@ namespace _Project.Comedy
         private FireService _fires;
         private WaterNozzle _nozzle;
         private List<KnockableProp> _props;
+        private PedestrianSystem _pedestrians;
+        private float _nextScaredLine;
 
         private Vehicle _driven;
         private float _lastBigText = float.NegativeInfinity;
@@ -128,7 +148,7 @@ namespace _Project.Comedy
 
         [Inject]
         public void Construct(IParticleFxSpawnService<ComedyFxId> fx, ISfxPlayer sfx, TrafficSystem traffic,
-            FireService fires, WaterNozzle nozzle, List<KnockableProp> props)
+            FireService fires, WaterNozzle nozzle, List<KnockableProp> props, PedestrianSystem pedestrians)
         {
             _fx = fx;
             _sfx = sfx;
@@ -136,6 +156,7 @@ namespace _Project.Comedy
             _fires = fires;
             _nozzle = nozzle;
             _props = props;
+            _pedestrians = pedestrians;
         }
 
         private void Start()
@@ -149,6 +170,10 @@ namespace _Project.Comedy
 
             _traffic.KnockedOut += OnKnockedOut;
             _fires.BuildingSaved += OnBuildingSaved;
+            _pedestrians.Hit += OnPedestrianHit;
+            _pedestrians.Scared += OnPedestrianScared;
+            _pedestrians.Soaked += OnPedestrianSoaked;
+            _pedestrians.GhostAppeared += OnGhostAppeared;
             modes.VehicleEntered += OnVehicleEntered;
             modes.VehicleExited += OnVehicleExited;
             if (modes.Driven != null)
@@ -168,6 +193,10 @@ namespace _Project.Comedy
 
             _traffic.KnockedOut -= OnKnockedOut;
             _fires.BuildingSaved -= OnBuildingSaved;
+            _pedestrians.Hit -= OnPedestrianHit;
+            _pedestrians.Scared -= OnPedestrianScared;
+            _pedestrians.Soaked -= OnPedestrianSoaked;
+            _pedestrians.GhostAppeared -= OnGhostAppeared;
             modes.VehicleEntered -= OnVehicleEntered;
             modes.VehicleExited -= OnVehicleExited;
             if (_driven != null)
@@ -288,6 +317,46 @@ namespace _Project.Comedy
             var cost = _bill.AddKnockout();
             UpdateBillText();
             _texts.Add(roof + Vector3.up * 1.5f, Money(cost), MoneyColor, 0.8f);
+        }
+
+        private void OnPedestrianHit(Pedestrian pedestrian)
+        {
+            _bill.AddPedestrianHit();
+            UpdateBillText();
+            var position = pedestrian.Position;
+            feel.Shake(0.3f);
+            feel.HitStop(hitStopSeconds);
+            Play(sounds.bigCrashThud, position);
+            _fx.SpawnParticle(ComedyFxId.Punch, position + Vector3.up);
+            _fx.SpawnParticle(Pick(CrashWords), position + Vector3.up * 3.5f);
+        }
+
+        private void OnPedestrianScared(Pedestrian pedestrian)
+        {
+            if (Time.time < _nextScaredLine)
+            {
+                return;
+            }
+
+            _nextScaredLine = Time.time + ScaredLineCooldown;
+            _texts.Add(pedestrian.HeadPosition + Vector3.up, Pick(ScaredLines), ShoutColor);
+        }
+
+        private void OnPedestrianSoaked(Pedestrian pedestrian)
+        {
+            _bill.AddSoakedPedestrian();
+            UpdateBillText();
+            Play(sounds.driverSoaked, pedestrian.Position);
+            _texts.Add(pedestrian.HeadPosition + Vector3.up, Pick(SoakedPedestrianLines), ShoutColor);
+        }
+
+        private void OnGhostAppeared(Ghost ghost)
+        {
+            var cost = _bill.AddMoralDamage();
+            UpdateBillText();
+            Play(sounds.knockout, ghost.Top);
+            _texts.Add(ghost.Top + Vector3.up * 2f, Pick(GhostLines), GhostColor, 1.1f);
+            _texts.Add(ghost.Top + Vector3.up, Money(cost), MoneyColor);
         }
 
         private void OnBuildingSaved(BuildingFire fire)
@@ -453,6 +522,7 @@ namespace _Project.Comedy
                 }
 
                 LaunchWalker(geyser);
+                _pedestrians.LaunchNear(geyser.Base, geyserRadius, geyserPlayerLaunch);
             }
         }
 
@@ -512,7 +582,8 @@ namespace _Project.Comedy
         {
             _billText = $"Рахунок за збитки: ${_bill.Total:N0}";
             _statsText = $"Врятовано: {_bill.BuildingsSaved}   Розбито: {_bill.PropsBroken}   " +
-                         $"Збито машин: {_bill.CarsKnockedOut}   Облито водіїв: {_bill.DriversSoaked}";
+                         $"Збито машин: {_bill.CarsKnockedOut}   Облито: {_bill.DriversSoaked + _bill.PedestriansSoaked}\n" +
+                         $"Прохожих у польоті: {_bill.PedestriansHit}";
             _billPulse = 1f;
         }
 
@@ -542,7 +613,7 @@ namespace _Project.Comedy
             _hud.fontSize = 15;
             _hudShadow.fontSize = 15;
             _hud.normal.textColor = Color.white;
-            var stats = new Rect(Screen.width * 0.5f - 300f, 42f, 600f, 24f);
+            var stats = new Rect(Screen.width * 0.5f - 300f, 42f, 600f, 48f);
             GUI.Label(new Rect(stats.x + 1f, stats.y + 1f, stats.width, stats.height), _statsText, _hudShadow);
             GUI.Label(stats, _statsText, _hud);
 
@@ -569,7 +640,8 @@ namespace _Project.Comedy
             GUI.Label(new Rect(box.x, y + 28f, width, 28f),
                 $"Ліхтарів, знаків і смітників знищено: {_bill.PropsBroken}", _style);
             GUI.Label(new Rect(box.x, y + 56f, width, 28f),
-                $"Машин збито: {_bill.CarsKnockedOut}, водіїв облито: {_bill.DriversSoaked}", _style);
+                $"Машин збито: {_bill.CarsKnockedOut}, облито: {_bill.DriversSoaked + _bill.PedestriansSoaked}, " +
+                $"прохожих у польоті: {_bill.PedestriansHit}", _style);
             _style.fontSize = 24;
             _style.normal.textColor = MoneyColor;
             GUI.Label(new Rect(box.x, y + 96f, width, 34f), $"Рахунок пожежній частині: ${_bill.Total:N0}", _style);

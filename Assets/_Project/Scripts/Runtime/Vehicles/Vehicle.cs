@@ -239,6 +239,12 @@ namespace _Project.Vehicles
                 return prop.WasLyingBefore(Time.fixedTime) ? DebrisHardness : prop.DentHardness;
             }
 
+            // Debris that is no prop is a ragdoll: soft.
+            if (collision.gameObject.layer == PhysicsLayers.Debris)
+            {
+                return 0f;
+            }
+
             if (collision.rigidbody != null && collision.rigidbody.TryGetComponent<Vehicle>(out var other))
             {
                 return Mathf.Clamp(other.body.mass / body.mass, 0.3f, 1.5f);

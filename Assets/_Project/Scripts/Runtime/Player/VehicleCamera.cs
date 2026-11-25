@@ -15,7 +15,8 @@ namespace _Project.Player
         [SerializeField] private float mouseSensitivity = 0.15f;
         [SerializeField] private float stickLookSpeed = 140f;
         [Tooltip("Knocked-over props are left out, or the camera jumps over every lamp lying under the car.")]
-        [SerializeField] private LayerMask obstacleMask = ~(1 << PhysicsLayers.Debris);
+        [SerializeField] private LayerMask obstacleMask =
+            ~((1 << PhysicsLayers.Debris) | (1 << PhysicsLayers.Pedestrian));
 
         private PlayerInputs _inputs;
         private Vehicle _target;

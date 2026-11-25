@@ -11,10 +11,13 @@ namespace _Project.Comedy
         // Repair cost per metre of total dent depth.
         private const int DentCostPerMetre = 6000;
         private const int KnockoutCost = 800;
+        private const int MoralDamageCost = 5000;
 
         public int Total { get; private set; }
         public int PropsBroken { get; private set; }
         public int CarsKnockedOut { get; private set; }
+        public int PedestriansHit { get; private set; }
+        public int PedestriansSoaked { get; private set; }
         public int DriversSoaked { get; private set; }
         public int BuildingsSaved { get; private set; }
         public int HydrantsOpened { get; private set; }
@@ -58,6 +61,21 @@ namespace _Project.Comedy
         {
             CarsKnockedOut++;
             return Add(KnockoutCost);
+        }
+
+        public void AddPedestrianHit()
+        {
+            PedestriansHit++;
+        }
+
+        public int AddMoralDamage()
+        {
+            return Add(MoralDamageCost);
+        }
+
+        public void AddSoakedPedestrian()
+        {
+            PedestriansSoaked++;
         }
 
         public void AddSoakedDriver()
