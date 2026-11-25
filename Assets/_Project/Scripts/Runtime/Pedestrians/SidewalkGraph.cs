@@ -13,7 +13,7 @@ namespace _Project.Pedestrians
     public sealed class SidewalkGraph
     {
         // Distance outside the block edge: clear of the lamps and bins nearer the kerb.
-        private const float EdgeOffset = 0.25f;
+        private const float EdgeOffset = 0.05f;
         // Crosswalks run down the middle of the first road tile.
         private const float CrosswalkInset = CityLayout.TileStep * 0.5f;
         private const int PointsPerCorner = 3;

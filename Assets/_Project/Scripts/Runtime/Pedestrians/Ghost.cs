@@ -11,7 +11,7 @@ namespace _Project.Pedestrians
         private const float RiseSeconds = 0.9f;
         private const float HoverSeconds = 2.4f;
         private const float ReturnSeconds = 0.6f;
-        private const float HoverHeight = 1.6f;
+        private const float HoverHeight = 2.5f;
         private const float HiddenScale = 0.15f;
 
         [SerializeField] private Transform leftArm;
@@ -20,10 +20,11 @@ namespace _Project.Pedestrians
         private Pedestrian _body;
         private Quaternion _leftRest;
         private Quaternion _rightRest;
+        private Vector3 _fullScale;
         private float _time;
 
         public bool IsOut { get; private set; }
-        public Vector3 Top => transform.position + Vector3.up * 1.8f;
+        public Vector3 Top => transform.position + Vector3.up * 3.1f;
 
         public void Setup(Transform left, Transform right)
         {
@@ -43,6 +44,7 @@ namespace _Project.Pedestrians
 
         private void Awake()
         {
+            _fullScale = transform.localScale;
             _leftRest = leftArm.localRotation;
             _rightRest = rightArm.localRotation;
         }
@@ -74,7 +76,7 @@ namespace _Project.Pedestrians
             var outOfBody = rise * (1f - back);
             var sway = new Vector3(Mathf.Sin(_time * 2.1f), Mathf.Sin(_time * 3.3f) * 0.4f, Mathf.Cos(_time * 1.7f));
             transform.position = _body.Position + (Vector3.up * HoverHeight + sway * 0.25f) * outOfBody;
-            transform.localScale = Vector3.one * Mathf.Lerp(HiddenScale, 1f, outOfBody);
+            transform.localScale = _fullScale * Mathf.Lerp(HiddenScale, 1f, outOfBody);
             transform.rotation = Quaternion.Euler(0f, _time * 60f, Mathf.Sin(_time * 4f) * 12f);
             var wave = Mathf.Sin(_time * 14f) * 45f;
             leftArm.localRotation = _leftRest * Quaternion.Euler(wave, 0f, 0f);

@@ -18,7 +18,7 @@ namespace _Project.Pedestrians
     public sealed class PedestrianSystem : MonoBehaviour
     {
         private const float MinHitSpeed = 3f;
-        private const float HitMargin = 0.3f;
+        private const float HitMargin = 0.5f;
         private const float HitHeight = 3f;
         private const float ScareSpeed = 7f;
         private const float ScareSeconds = 1.1f;

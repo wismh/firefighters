@@ -31,6 +31,8 @@ namespace _Project.Editor.City
         private const string LayerName = "Pedestrian";
         private const int GhostCount = 4;
         private const float CapsuleHeight = 1.7f;
+        // The pack's people are 1.7 m; the town is built around a 2.4 m player and 3 m high cars.
+        private const float Scale = 1.75f;
 
         // The pack's everyday looks; its cloaks, horns and crowns stay out of town.
         private static readonly (string mesh, string name)[] Characters =
@@ -235,6 +237,7 @@ namespace _Project.Editor.City
                 var pedestrian = root.AddComponent<Pedestrian>();
                 pedestrian.Setup(animator, capsule, byName["Hips"], byName["Head"], bodies.ToArray(),
                     colliders.ToArray(), all);
+                root.transform.localScale = Vector3.one * Scale;
                 var saved = PrefabUtility.SaveAsPrefabAsset(root, $"{PrefabFolder}/{root.name}.prefab");
                 return saved.GetComponent<Pedestrian>();
             }
@@ -300,6 +303,7 @@ namespace _Project.Editor.City
                 var bones = root.GetComponentsInChildren<Transform>(true);
                 var ghost = root.AddComponent<Ghost>();
                 ghost.Setup(bones.First(b => b.name == Bone + "LeftArm"), bones.First(b => b.name == Bone + "RightArm"));
+                root.transform.localScale = Vector3.one * Scale;
                 var saved = PrefabUtility.SaveAsPrefabAsset(root, $"{PrefabFolder}/Ghost.prefab");
                 return saved.GetComponent<Ghost>();
             }

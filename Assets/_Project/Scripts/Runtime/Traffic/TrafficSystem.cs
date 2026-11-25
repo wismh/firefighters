@@ -18,7 +18,7 @@ namespace _Project.Traffic
         private const int PathLength = 3;
         private const float ObstacleLookAhead = 35f;
         private const float StopLineMargin = 1f;
-        private const float PedestrianRadius = 0.5f;
+        private const float PedestrianRadius = 0.7f;
 
         [SerializeField] private TrafficSettings settings;
 

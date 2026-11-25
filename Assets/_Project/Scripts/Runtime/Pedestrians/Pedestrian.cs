@@ -10,8 +10,11 @@ namespace _Project.Pedestrians
     /// </summary>
     public sealed class Pedestrian : MonoBehaviour
     {
+        // At scale 1; the stride, and so the speed, grows with the body.
         private const float WalkSpeed = 1.2f;
-        private const float RunSpeed = 4.2f;
+        private const float RunSpeed = 4f;
+        // Between the lamps and bins on one side and the shop fronts on the other there is little room.
+        private const float LaneSpread = 0.12f;
         private const float TurnSharpness = 9f;
         private const float StepHeightSpeed = 1.2f;
         private const float Fade = 0.2f;
@@ -20,7 +23,7 @@ namespace _Project.Pedestrians
         private const float GetUpBlend = 0.5f;
         private const float GetUpFleeSeconds = 5f;
         private const float RestSpeed = 0.6f;
-        private const float RestHeight = 1f;
+        private const float RestHeight = 1.5f;
         private const float MinRagdollSeconds = 1.6f;
         private const float MaxRagdollSeconds = 9f;
         private const float CrossChance = 0.35f;
@@ -91,7 +94,7 @@ namespace _Project.Pedestrians
             _graph = graph;
             _from = point;
             _link = link;
-            _lane = new Vector3(Random.Range(-0.25f, 0.25f), 0f, Random.Range(-0.25f, 0.25f));
+            _lane = new Vector3(Random.Range(-LaneSpread, LaneSpread), 0f, Random.Range(-LaneSpread, LaneSpread));
             IsHaunted = false;
             SetRagdoll(false);
             animator.Rebind();
@@ -271,7 +274,7 @@ namespace _Project.Pedestrians
         {
             var position = transform.position;
             var toTarget = Flat(_graph.Points[_link.To] + _lane - position);
-            var step = speed * dt;
+            var step = speed * transform.localScale.x * dt;
             if (toTarget.magnitude <= step)
             {
                 Arrive();
