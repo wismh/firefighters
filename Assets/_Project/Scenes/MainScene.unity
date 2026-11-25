@@ -28633,7 +28633,8 @@ MonoBehaviour:
   - {fileID: 476930525}
   - {fileID: 476930524}
   baseY: 0
-  sootTint: {r: 0.42, g: 0.36, b: 0.33, a: 1}
+  charredMaterial: {fileID: 2100000, guid: d79c1689ebdf7fe4d840b5dd092ca625, type: 2}
+  emberRate: 0.3
   flickerSpeed: 7
   flickerAmount: 0.35
   douseRadius: 3.5
@@ -50725,7 +50726,8 @@ MonoBehaviour:
   - {fileID: 681468624}
   - {fileID: 681468623}
   baseY: 0
-  sootTint: {r: 0.42, g: 0.36, b: 0.33, a: 1}
+  charredMaterial: {fileID: 2100000, guid: d79c1689ebdf7fe4d840b5dd092ca625, type: 2}
+  emberRate: 0.3
   flickerSpeed: 7
   flickerAmount: 0.35
   douseRadius: 3.5
@@ -58183,7 +58185,8 @@ MonoBehaviour:
   - {fileID: 1778851700}
   - {fileID: 1778851699}
   baseY: -0.044267654
-  sootTint: {r: 0.42, g: 0.36, b: 0.33, a: 1}
+  charredMaterial: {fileID: 2100000, guid: d79c1689ebdf7fe4d840b5dd092ca625, type: 2}
+  emberRate: 0.3
   flickerSpeed: 7
   flickerAmount: 0.35
   douseRadius: 3.5
@@ -128624,7 +128627,8 @@ MonoBehaviour:
   - {fileID: 2084834064}
   - {fileID: 2084834063}
   baseY: 0
-  sootTint: {r: 0.42, g: 0.36, b: 0.33, a: 1}
+  charredMaterial: {fileID: 2100000, guid: d79c1689ebdf7fe4d840b5dd092ca625, type: 2}
+  emberRate: 0.3
   flickerSpeed: 7
   flickerAmount: 0.35
   douseRadius: 3.5

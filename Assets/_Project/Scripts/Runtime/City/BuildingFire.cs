@@ -6,14 +6,20 @@ using Random = UnityEngine.Random;
 namespace _Project.City
 {
     /// <summary>
-    /// A burning building: its flames, smoke, embers, one flickering fire light and soot-darkened walls.
+    /// A burning building: its flames, smoke, embers, one flickering fire light and charred walls.
     /// Every flame has a strength that water lowers around the point it lands on; a doused flame stays as weak
     /// as the water left it. A put-out flame catches again from a strong neighbour that nobody has touched, so
-    /// a building has to be put out completely. Then the smoke turns pale, thins out and stops; the soot stays.
+    /// a building has to be put out completely. Then the smoke turns pale, thins out and stops; the char stays.
     /// </summary>
     public sealed class BuildingFire : MonoBehaviour
     {
+        // Array size in CharredBuilding.shader.
+        private const int MaxShaderFlames = 32;
+
+        private static readonly int BaseMapId = Shader.PropertyToID("_BaseMap");
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int FlamesId = Shader.PropertyToID("_Flames");
+        private static readonly int FlameCountId = Shader.PropertyToID("_FlameCount");
 
         [SerializeField] private Light fireLight;
         [SerializeField] private Renderer[] charredRenderers;
@@ -22,7 +28,10 @@ namespace _Project.City
         [SerializeField] private ParticleSystem[] embers;
         [Tooltip("World height of the building's base; set by the builder.")]
         [SerializeField] private float baseY;
-        [SerializeField] private Color sootTint = new Color(0.42f, 0.36f, 0.33f);
+        [Tooltip("Charred Building material; each burning building gets its own copy with its own texture.")]
+        [SerializeField] private Material charredMaterial;
+        [Tooltip("How fast the embers in the walls heat up and cool down after their flame, per second.")]
+        [SerializeField] private float emberRate = 0.3f;
         [SerializeField] private float flickerSpeed = 7f;
         [SerializeField] private float flickerAmount = 0.35f;
 
@@ -63,6 +72,9 @@ namespace _Project.City
         [SerializeField] private float steamTime = 4f;
 
         private readonly List<int> _neighbours = new List<int>(16);
+        private readonly List<Material> _charred = new List<Material>(4);
+        private readonly Vector4[] _shaderFlames = new Vector4[MaxShaderFlames];
+        private int _shaderFlameCount;
         private float[] _smokeRates;
         private float[] _emberRates;
         private float _baseIntensity;
@@ -81,8 +93,9 @@ namespace _Project.City
         public Bounds Area { get; private set; }
 
         public void Setup(Light light, Renderer[] renderers, FlameSpot[] flameSpots, ParticleSystem[] smokeSystems,
-            ParticleSystem[] emberSystems)
+            ParticleSystem[] emberSystems, Material charred)
         {
+            charredMaterial = charred;
             fireLight = light;
             charredRenderers = renderers;
             flames = flameSpots;
@@ -172,14 +185,11 @@ namespace _Project.City
             _baseIntensity = fireLight.intensity;
             _seed = Random.value * 100f;
 
-            var block = new MaterialPropertyBlock();
             var area = charredRenderers[0].bounds;
             foreach (var r in charredRenderers)
             {
-                r.GetPropertyBlock(block);
-                block.SetColor(BaseColorId, sootTint);
-                r.SetPropertyBlock(block);
                 area.Encapsulate(r.bounds);
+                CharMaterials(r);
             }
 
             area.Expand(douseRadius * 2f);
@@ -207,10 +217,64 @@ namespace _Project.City
 
                 flames[i].Neighbours = _neighbours.ToArray();
             }
+
+            _shaderFlameCount = Mathf.Min(flames.Length, MaxShaderFlames);
+            for (var i = 0; i < _shaderFlameCount; i++)
+            {
+                var position = flames[i].root.position;
+                _shaderFlames[i] = new Vector4(position.x, position.y, position.z, 1f);
+            }
+
+            PushShaderFlames();
+        }
+
+        private void OnDestroy()
+        {
+            foreach (var material in _charred)
+            {
+                Destroy(material);
+            }
+        }
+
+        /// <summary>Gives the renderer charred copies of its materials, each with the texture of the one it replaces.</summary>
+        private void CharMaterials(Renderer target)
+        {
+            var materials = target.sharedMaterials;
+            for (var i = 0; i < materials.Length; i++)
+            {
+                var charred = new Material(charredMaterial);
+                charred.SetTexture(BaseMapId, materials[i].GetTexture(BaseMapId));
+                charred.SetColor(BaseColorId, materials[i].GetColor(BaseColorId));
+                materials[i] = charred;
+                _charred.Add(charred);
+            }
+
+            target.sharedMaterials = materials;
+        }
+
+        /// <summary>The embers in the walls follow their flames with a delay.</summary>
+        private void UpdateEmbers(float dt)
+        {
+            for (var i = 0; i < _shaderFlameCount; i++)
+            {
+                _shaderFlames[i].w = Mathf.MoveTowards(_shaderFlames[i].w, flames[i].Strength, emberRate * dt);
+            }
+
+            PushShaderFlames();
+        }
+
+        private void PushShaderFlames()
+        {
+            foreach (var material in _charred)
+            {
+                material.SetVectorArray(FlamesId, _shaderFlames);
+                material.SetFloat(FlameCountId, _shaderFlameCount);
+            }
         }
 
         private void Update()
         {
+            UpdateEmbers(Time.deltaTime);
             if (!IsBurning)
             {
                 UpdateBurnOut();

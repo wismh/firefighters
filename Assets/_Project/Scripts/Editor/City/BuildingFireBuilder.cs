@@ -3,6 +3,7 @@ using System.Linq;
 using _Project.City;
 using _Project.FireHose;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -84,7 +85,43 @@ namespace _Project.Editor.City
 
             var fire = root.gameObject.AddComponent<BuildingFire>();
             var flames = ReachableFlames(fire, CollectFlames(root, roofFlames), WorldBounds(renderers));
-            fire.Setup(fireLight, renderers, flames, Systems(root, SmokeColumn, SmokeSoft), Systems(root, Embers));
+            fire.Setup(fireLight, renderers, flames, Systems(root, SmokeColumn, SmokeSoft), Systems(root, Embers),
+                EnsureCharredMaterial());
+        }
+
+        /// <summary>Gives the fires already in the open scene the charred material, without rebuilding them.</summary>
+        [MenuItem("Tools/City/Refresh Charred Buildings")]
+        public static void RefreshCharred()
+        {
+            if (Application.isPlaying)
+            {
+                Debug.LogError("[city] exit Play mode first");
+                return;
+            }
+
+            var material = EnsureCharredMaterial();
+            foreach (var fire in Object.FindObjectsByType<BuildingFire>(FindObjectsSortMode.None))
+            {
+                CitySceneSetup.SetRefs(fire, ("charredMaterial", material));
+            }
+
+            var scene = EditorSceneManager.GetActiveScene();
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+        }
+
+        private static Material EnsureCharredMaterial()
+        {
+            const string path = OwnMaterials + "CharredBuilding.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material != null)
+            {
+                return material;
+            }
+
+            material = new Material(Shader.Find("Project/Charred Building"));
+            AssetDatabase.CreateAsset(material, path);
+            return material;
         }
 
         /// <summary>Takes the fire off a building and gives it back its box collider.</summary>
