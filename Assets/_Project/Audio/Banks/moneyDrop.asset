@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 870817c183abc5e458946d63e766aed4, type: 3}
+  m_Name: moneyDrop
+  m_EditorClassIdentifier: Assembly-CSharp::_Project.Audio.SoundBank
+  clips:
+  - {fileID: 8300000, guid: ecf10ce5d8be8ff4b81c9375fa8ac407, type: 3}
+  - {fileID: 8300000, guid: 4705fac0c09e4eb4fb811c04bfef204d, type: 3}
+  - {fileID: 8300000, guid: 1c66962dee466b14ba5e8a23ac3fdaa3, type: 3}
+  volume: 0.6
+  pitchRange: {x: 0.95, y: 1.08}

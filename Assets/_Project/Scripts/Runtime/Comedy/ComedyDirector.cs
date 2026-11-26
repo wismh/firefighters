@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using _Project.Audio;
 using _Project.City;
 using _Project.FireHose;
 using _Project.Pedestrians;
@@ -31,6 +32,7 @@ namespace _Project.Comedy
         // Below this speed the player's car was hit rather than hitting.
         private const float RammedSpeed = 3f;
         private const float ScaredLineCooldown = 0.6f;
+        private const float ScreamCooldown = 0.9f;
         private const float BurningLineInterval = 2.2f;
         private const float BurningShakeInterval = 0.25f;
 
@@ -135,6 +137,7 @@ namespace _Project.Comedy
         private float _nextBurningLine;
         private float _nextBurningShake;
         private float _nextScaredLine;
+        private float _nextScream;
 
         private Vehicle _driven;
         private float _lastBigText = float.NegativeInfinity;
@@ -309,6 +312,7 @@ namespace _Project.Comedy
             if (cost >= 1000)
             {
                 _fx.SpawnParticle(ComedyFxId.DollarBlast, position + Vector3.up * 1.5f);
+                Play(sounds.moneyDrop, position);
             }
 
             feel.Shake(0.12f);
@@ -331,6 +335,7 @@ namespace _Project.Comedy
             _fx.SpawnParticle(ComedyFxId.StunStars, roof + Vector3.up * 0.6f);
             _fx.SpawnParticle(Pick(KnockedFaces), roof + Vector3.up * 2.6f);
             Play(sounds.knockout, roof);
+            Play(sounds.driverKnocked, roof);
             _texts.Add(roof + Vector3.up * 4f, Pick(KnockedLines), ShoutColor);
             // A traffic car that drove into the standing fire truck is its own driver's fault.
             if (_driven == null || _driven.Controller.PreStepVelocity.magnitude < RammedSpeed)
@@ -348,6 +353,8 @@ namespace _Project.Comedy
             var at = walker.transform.position;
             feel.Shake(Mathf.Clamp(speed * 0.04f, 0.3f, 0.8f));
             Play(sounds.bigCrashThud, at, 0.7f);
+            Play(sounds.whoosh, at, 0.8f);
+            Play(sounds.playerThrown, at, 1f, true);
             _fx.SpawnParticle(ComedyFxId.DustPoof, at + Vector3.up * 0.3f);
             _texts.Add(AheadOfView(6f), Pick(JumpLines), ShoutColor, 1.3f);
         }
@@ -355,7 +362,8 @@ namespace _Project.Comedy
         private void OnCaughtFire()
         {
             Play(sounds.propDown, walker.transform.position);
-            _nextBurningLine = 0f;
+            _nextBurningLine = Time.time + BurningLineInterval;
+            Play(sounds.playerBurning, walker.transform.position, 1f, true);
         }
 
         // The player in the flames complains and shakes until out of them.
@@ -376,6 +384,7 @@ namespace _Project.Comedy
             {
                 _nextBurningLine = Time.time + BurningLineInterval;
                 _texts.Add(AheadOfView(5f), Pick(BurningLines), ShoutColor, 1.3f);
+                Play(sounds.playerBurning, walker.transform.position, 0.8f, true);
             }
         }
 
@@ -392,12 +401,19 @@ namespace _Project.Comedy
             feel.Shake(0.3f);
             feel.HitStop(hitStopSeconds);
             Play(sounds.bigCrashThud, position);
+            Play(sounds.pedestrianHit, position);
             _fx.SpawnParticle(ComedyFxId.Punch, position + Vector3.up);
             _fx.SpawnParticle(Pick(CrashWords), position + Vector3.up * 3.5f);
         }
 
         private void OnPedestrianScared(Pedestrian pedestrian)
         {
+            if (Time.time >= _nextScream)
+            {
+                _nextScream = Time.time + ScreamCooldown * Random.Range(0.7f, 1.4f);
+                Play(sounds.pedestrianScream, pedestrian.Position);
+            }
+
             if (Time.time < _nextScaredLine)
             {
                 return;
@@ -412,6 +428,7 @@ namespace _Project.Comedy
             _bill.AddSoakedPedestrian();
             UpdateBillText();
             Play(sounds.driverSoaked, pedestrian.Position);
+            Play(sounds.pedestrianSoaked, pedestrian.Position);
             _texts.Add(pedestrian.HeadPosition + Vector3.up, Pick(SoakedPedestrianLines), ShoutColor);
         }
 
@@ -419,7 +436,7 @@ namespace _Project.Comedy
         {
             var cost = _bill.AddMoralDamage();
             UpdateBillText();
-            Play(sounds.knockout, ghost.Top);
+            Play(sounds.ghostLaugh, ghost.Top);
             _texts.Add(ghost.Top + Vector3.up * 2f, Pick(GhostLines), GhostColor, 1.1f);
             _texts.Add(ghost.Top + Vector3.up, Money(cost), MoneyColor);
         }
@@ -434,6 +451,8 @@ namespace _Project.Comedy
             _fx.SpawnParticle(ComedyFxId.CoinBlast, top + Vector3.up);
             Play(sounds.buildingSaved, top, 1f, true);
             Play(sounds.coins, top, 0.8f, true);
+            Play(sounds.crowdCheer, top, 1f, true);
+            Play(sounds.crowdCheer, top, 0.8f, true);
             _texts.Add(top + Vector3.up * 5f, "ВРЯТОВАНО!", GoodColor, 1.4f);
             if (_fires.Burning == 0)
             {
@@ -479,6 +498,8 @@ namespace _Project.Comedy
             {
                 _cheered = true;
                 var roof = _driven.CameraTarget.position;
+                Play(sounds.boing, roof, 0.7f, true);
+                Play(sounds.playerCheer, roof, 1f, true);
                 _fx.SpawnParticle(ComedyFxId.EmojiCool, roof + Vector3.up * 2.6f);
                 _texts.Add(roof + Vector3.up * 4.5f, Pick(FlightLines), ShoutColor, 1.2f);
             }
@@ -526,6 +547,8 @@ namespace _Project.Comedy
 
             _nextSoak[vehicle] = Time.time + SoakCooldown;
             var roof = vehicle.CameraTarget.position;
+            Play(sounds.horn, roof, 0.6f);
+            Play(sounds.driverAngry, roof);
             _fx.SpawnParticle(Pick(SoakedFaces), roof + Vector3.up * 2.6f);
             _texts.Add(roof + Vector3.up * 4.5f, Pick(SoakedLines), ShoutColor);
             if (_soaked.Add(vehicle))
@@ -636,12 +659,26 @@ namespace _Project.Comedy
 
         private void Play(SoundData sound, Vector3 at, float volume = 1f, bool everywhere = false)
         {
-            var distance = Vector3.Distance(at, viewCamera.transform.position);
-            var falloff = everywhere ? 1f : Mathf.Clamp01(1f - distance / HearingDistance);
+            var falloff = Falloff(at, everywhere);
             if (falloff > 0.05f)
             {
                 _sfx.PlaySfx(sound, volume * falloff);
             }
+        }
+
+        private void Play(SoundBank bank, Vector3 at, float volume = 1f, bool everywhere = false)
+        {
+            var falloff = Falloff(at, everywhere);
+            if (falloff > 0.05f)
+            {
+                bank.Play(_sfx, volume * falloff);
+            }
+        }
+
+        private float Falloff(Vector3 at, bool everywhere)
+        {
+            var distance = Vector3.Distance(at, viewCamera.transform.position);
+            return everywhere ? 1f : Mathf.Clamp01(1f - distance / HearingDistance);
         }
 
         private void UpdateBillText()

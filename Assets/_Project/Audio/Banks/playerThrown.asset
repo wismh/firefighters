@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 870817c183abc5e458946d63e766aed4, type: 3}
+  m_Name: playerThrown
+  m_EditorClassIdentifier: Assembly-CSharp::_Project.Audio.SoundBank
+  clips:
+  - {fileID: 8300000, guid: 9f7d4b18d3540d54ba16e40f8e31589c, type: 3}
+  - {fileID: 8300000, guid: dd199a41acfaaa74c988dcddfe4ded46, type: 3}
+  - {fileID: 8300000, guid: f08d30f5bfacbfa4680b58a112f0e092, type: 3}
+  - {fileID: 8300000, guid: 1616633ceca6d5e48b4313a262dc041a, type: 3}
+  - {fileID: 8300000, guid: 94171d6033c0d2645810fb03ac9511c5, type: 3}
+  - {fileID: 8300000, guid: 4369608e61f627647b289610ddbb013a, type: 3}
+  - {fileID: 8300000, guid: 4d7cbd446634e054e83a65c008030023, type: 3}
+  - {fileID: 8300000, guid: f57797571690ce844893054a04d08fc5, type: 3}
+  - {fileID: 8300000, guid: 144d0a05895b0dd4d8163771ced15525, type: 3}
+  - {fileID: 8300000, guid: 85cabd181e5385a44aa4250ddf001e8c, type: 3}
+  volume: 0.85
+  pitchRange: {x: 0.97, y: 1.05}

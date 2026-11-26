@@ -173639,6 +173639,72 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 415084, guid: a2198d165c0270848aa01adeb1d27577, type: 3}
   m_PrefabInstance: {fileID: 1224139753}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1224556896
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1224556898}
+  - component: {fileID: 1224556897}
+  m_Layer: 0
+  m_Name: Soundscape
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1224556897
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1224556896}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5326bf9a9284d34f8384567d276fb7e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::_Project.Audio.CitySoundscape
+  modes: {fileID: 1214169607}
+  walker: {fileID: 710569035}
+  listener: {fileID: 1228372357}
+  engine: {fileID: 11400000, guid: 1ff71db5dfca77b43b1534a33591b163, type: 2}
+  siren: {fileID: 11400000, guid: 3c1e69becaffa444c8728963eb0e63ca, type: 2}
+  skid: {fileID: 11400000, guid: da760db3e1583b442a4414c333031016, type: 2}
+  hose: {fileID: 11400000, guid: b91df998ed3e9124a918341bc854a131, type: 2}
+  steam: {fileID: 11400000, guid: 2bec4b77c39b60f468dee7ca74a94e6f, type: 2}
+  fire: {fileID: 11400000, guid: ca89630beaf0f1d408c75e1bc9cf23ee, type: 2}
+  ambience: {fileID: 11400000, guid: c4019d428cc3fe74fbc3cce63a878479, type: 2}
+  footsteps: {fileID: 11400000, guid: 5b8168bdb59482341bc466ccc22874c6, type: 2}
+  land: {fileID: 11400000, guid: a94fd0f74dc79b44ebb6b050b0fa2601, type: 2}
+  doorOpen: {fileID: 11400000, guid: d7bc2f16650dcb847a2834b71883fbc5, type: 2}
+  doorClose: {fileID: 11400000, guid: 071c9952b0d83314782159f4ca303a53, type: 2}
+  driveMusic: {fileID: 11400000, guid: 326e7c58f600dfe408470486efe7fbb4, type: 2}
+  walkMusic: {fileID: 11400000, guid: ea2ccd1498833fe46921da6496487cc8, type: 2}
+  musicCrossfade: 2.5
+  walkMusicDelay: 4
+  fireHearingDistance: 55
+  sirenHearingDistance: 120
+  loopResponse: 6
+  skidResponse: 10
+--- !u!4 &1224556898
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1224556896}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1224603533
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -226531,6 +226597,20 @@ MonoBehaviour:
     buildingSaved: {fileID: 11400000, guid: 288ba41b2c333af4bba0321aa0b53332, type: 2}
     allSaved: {fileID: 11400000, guid: c2d3eb37086ef2243844e56e4bdaf32a, type: 2}
     firework: {fileID: 11400000, guid: 2c5b8470a0bf0694b93b5584e1aa06dc, type: 2}
+    horn: {fileID: 11400000, guid: f47f2f578a45ba64fae5a5c8e1c02cf4, type: 2}
+    boing: {fileID: 11400000, guid: 546ce08bf288c0c49b6bcd349af49bbb, type: 2}
+    whoosh: {fileID: 11400000, guid: 7a0d96537b28eeb4095352613e94c8c2, type: 2}
+    moneyDrop: {fileID: 11400000, guid: b9a797adcc8ff224ca5f5ea6330701f1, type: 2}
+    pedestrianScream: {fileID: 11400000, guid: 1b0dd60bdf6f39e40a72e1eec36a6cb4, type: 2}
+    pedestrianHit: {fileID: 11400000, guid: dcefc8595f07da242a08cd7f9d7c6b67, type: 2}
+    pedestrianSoaked: {fileID: 11400000, guid: 7676158e494f9ae43a1e83eb9b96627f, type: 2}
+    ghostLaugh: {fileID: 11400000, guid: 36c6715412dfc21498c0df5a2a7483d2, type: 2}
+    driverAngry: {fileID: 11400000, guid: 8dab9ca440f285242850673203cc9ec0, type: 2}
+    driverKnocked: {fileID: 11400000, guid: 8d55bece8404c364c95c0be2a2107942, type: 2}
+    crowdCheer: {fileID: 11400000, guid: 7e77f4c9c63689c4c8a16ab7a0a25ede, type: 2}
+    playerBurning: {fileID: 11400000, guid: c6da25a1b45c3e249ad24922c294c12a, type: 2}
+    playerCheer: {fileID: 11400000, guid: a0944082de0c5da44ab149e9452e851e, type: 2}
+    playerThrown: {fileID: 11400000, guid: d8d9b55b94379434c843b4e41803c214, type: 2}
   flightTrail: {fileID: 1230847804617279268}
   bigCrashDepth: 0.12
   hitStopSeconds: 0.07
@@ -325002,3 +325082,4 @@ SceneRoots:
   - {fileID: 2047547864}
   - {fileID: 1777056473}
   - {fileID: 1408537709}
+  - {fileID: 1224556898}

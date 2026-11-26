@@ -38,6 +38,9 @@ namespace _Project.FireHose
         public int Total => _fires.Count;
         public int Burning { get; private set; }
 
+        /// <summary>The hose stream lands in flames this frame (steam hisses).</summary>
+        public bool IsDousing { get; private set; }
+
         /// <summary>How deep in the flames of any building a point is, 0..1.</summary>
         public float HeatAt(Vector3 point)
         {
@@ -69,6 +72,7 @@ namespace _Project.FireHose
 
         public void Tick()
         {
+            IsDousing = false;
             if (!_nozzle.IsWaterArriving)
             {
                 _steamTimer = 0f;
@@ -86,6 +90,7 @@ namespace _Project.FireHose
                 }
             }
 
+            IsDousing = hitFlame;
             _steamTimer -= dt;
             if (!hitFlame || _steamTimer > 0f)
             {

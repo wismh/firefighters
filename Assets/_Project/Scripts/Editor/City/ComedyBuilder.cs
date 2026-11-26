@@ -204,12 +204,12 @@ namespace _Project.Editor.City
             SetSound(sounds, "propDown", EtfxSound + "etfx_explosion_poof.wav", 0.8f, 0.9f, 1.15f);
             SetSound(sounds, "knockout", Sfx + "SFX_LoseInRound.wav", 0.6f, 1f, 1f);
             SetSound(sounds, "geyser", EtfxSound + "etfx_explosion_liquid.wav", 1f, 0.8f, 0.9f);
-            SetSound(sounds, "driverSoaked", Sfx + "SFX_UI_ChestShake.wav", 0.7f, 1.1f, 1.3f);
             SetSound(sounds, "coins", Sfx + "SFX_CoinsGranted.wav", 0.8f, 1f, 1f);
             SetSound(sounds, "buildingSaved", Sfx + "SFX_VictoryInRound.wav", 0.8f, 1f, 1f);
             SetSound(sounds, "allSaved", Sfx + "SFX_VictoryInMatch.mp3", 0.9f, 1f, 1f);
             SetSound(sounds, "firework", EtfxSound + "etfx_explosion_sparkle2.wav", 0.7f, 0.85f, 1.15f);
             so.ApplyModifiedPropertiesWithoutUndo();
+            SoundscapeBuilder.ApplyComedySounds(director);
         }
 
         private static void SetSound(SerializedProperty sounds, string field, string clipPath, float volume,

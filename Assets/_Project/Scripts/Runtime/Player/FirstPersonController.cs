@@ -30,6 +30,9 @@ namespace _Project.Player
         private bool _leashed;
 
         public Transform CameraPivot => cameraPivot;
+        public bool IsGrounded => character.isGrounded;
+        public float HorizontalSpeed => _horizontalVelocity.magnitude;
+        public float VerticalSpeed => _verticalVelocity;
 
         [Inject]
         public void Construct(PlayerInputs inputs)

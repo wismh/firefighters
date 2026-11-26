@@ -70,6 +70,7 @@ namespace _Project.Editor.City
             PedestrianBuilder.Apply();
             CityNightBuilder.Apply();
             BurningBuilder.Apply();
+            SoundscapeBuilder.Apply();
             CityLightingSetup.Apply(true);
 
             EditorSceneManager.MarkSceneDirty(scene);
