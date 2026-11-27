@@ -1,6 +1,6 @@
 """Procedural sound effects for the city: loops (engine, siren, hose, fire, steam, skid, ambience) and one-shots.
 
-Run: python Tools/Audio/gen_sfx.py [radio]  -> writes Assets/_Project/Audio/Generated/Sfx/*.wav (44.1 kHz, 16-bit mono).
+Run: python Tools/Audio/gen_sfx.py [radio|knockout]  -> writes Assets/_Project/Audio/Generated/Sfx/*.wav (44.1 kHz, 16-bit mono).
 Every loop is seamless: built from whole periods or crossfaded end-into-start.
 """
 import os
@@ -306,6 +306,28 @@ def boing():
     save("boing", x)
 
 
+def knockout():
+    # A knocked-out driver: a hollow cartoon "bonk" with a falling pitch, then little birds tweeting around the head.
+    t = t_axis(1.25)
+    n = len(t)
+    f = 520 * np.exp(-t * 9) + 140
+    bonk = np.sin(np.cumsum(2 * np.pi * f / SR)) + 0.35 * np.sin(np.cumsum(2 * np.pi * 2.76 * f / SR))
+    bonk = bonk * np.exp(-t * 14) * 1.2
+    knock = bandpass(white(n), 300, 1800) * np.exp(-t * 60) * 0.6
+    birds = np.zeros(n)
+    # Tweets alternate left and right of the head: quick upward chirps with a trill.
+    for k, start in enumerate([0.22, 0.42, 0.6, 0.8, 0.98]):
+        dur = 0.11
+        tt = t - start
+        on = (tt >= 0) & (tt < dur)
+        base = 2600 + 400 * (k % 2)
+        chirp = base + 1500 * np.clip(tt / dur, 0, 1) + 180 * np.sin(2 * np.pi * 38 * tt)
+        phase = np.cumsum(2 * np.pi * chirp / SR)
+        env = np.sin(np.pi * np.clip(tt / dur, 0, 1)) ** 2 * on
+        birds += np.sin(phase) * env * (0.5 - 0.06 * k)
+    save("knockout_dizzy", lowpass(bonk + knock, 6000) + birds, 0.8)
+
+
 # ---------------------------------------------------------------- dispatcher radio
 
 def radio_band(x):
@@ -363,6 +385,9 @@ if __name__ == "__main__":
     if sys.argv[1:] == ["radio"]:
         radio()
         sys.exit()
+    if sys.argv[1:] == ["knockout"]:
+        knockout()
+        sys.exit()
     engine_loop()
     siren_loop()
     hose_loop()
@@ -378,4 +403,5 @@ if __name__ == "__main__":
     splash()
     horn()
     boing()
+    knockout()
     radio()

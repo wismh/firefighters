@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96870a4c42badd34481f0a421f2331da, type: 3}
   m_Name: knockout
   m_EditorClassIdentifier: MyToolkit.Runtime::MyToolkit.Audio.SoundData
-  _clip: {fileID: 8300000, guid: bb1a3d34c97cac5408e824a0fa109390, type: 3}
+  _clip: {fileID: 8300000, guid: 6cdf3e233539311479012b62c8594ec5, type: 3}
   _volume: 0.6
-  _pitchRange: {x: 1, y: 1}
+  _pitchRange: {x: 0.95, y: 1.08}

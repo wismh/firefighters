@@ -202,7 +202,8 @@ namespace _Project.Editor.City
             SetSound(sounds, "bigCrashThud", Sfx + "SFX_MeleeAttack_03.wav", 0.9f, 0.85f, 1f);
             SetSound(sounds, "smallCrash", EtfxSound + "etfx_explosion_bullet.wav", 0.5f, 0.9f, 1.2f);
             SetSound(sounds, "propDown", EtfxSound + "etfx_explosion_poof.wav", 0.8f, 0.9f, 1.15f);
-            SetSound(sounds, "knockout", Sfx + "SFX_LoseInRound.wav", 0.6f, 1f, 1f);
+            // Generated (Tools/Audio/gen_sfx.py): a bonk and tweeting birds, not a "you lose" jingle.
+            SetSound(sounds, "knockout", "Assets/_Project/Audio/Generated/Sfx/knockout_dizzy.wav", 0.6f, 0.95f, 1.08f);
             SetSound(sounds, "geyser", EtfxSound + "etfx_explosion_liquid.wav", 1f, 0.8f, 0.9f);
             SetSound(sounds, "coins", Sfx + "SFX_CoinsGranted.wav", 0.8f, 1f, 1f);
             SetSound(sounds, "buildingSaved", Sfx + "SFX_VictoryInRound.wav", 0.8f, 1f, 1f);
