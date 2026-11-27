@@ -26,3 +26,8 @@ Keystore/
 
 unity_import.log
 _template_guids.json
+
+# local only
+steam_appid.txt
+/Docs/
+/Tools/

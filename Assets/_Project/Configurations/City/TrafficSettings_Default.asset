@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7f09a3eaa9236b4f840d11e35167105, type: 3}
+  m_Name: TrafficSettings_Default
+  m_EditorClassIdentifier: Assembly-CSharp::_Project.Traffic.TrafficSettings
+  vehiclePrefabs:
+  - {fileID: 4941889986819727332, guid: 0ab8e778857cac44d9b1c4cf04ea2a7e, type: 3}
+  - {fileID: 7118431210929013313, guid: 98539d9a85ee8dc46bddea5bdf5dad23, type: 3}
+  - {fileID: 2300099448168507610, guid: e8afc5910b10ed0429258aa4f5c3e496, type: 3}
+  - {fileID: 1890448490118997291, guid: 1580d651f8bba43468ff21eb3e0c1efd, type: 3}
+  - {fileID: 6942192723142283693, guid: 5deece7e39b073a479e84ba25596357a, type: 3}
+  - {fileID: 3289444278671412476, guid: ff0136a2a92d4de498869822c179a873, type: 3}
+  - {fileID: 7899992300788645888, guid: 69af99d3131c3ca4c85afdb2e43a1553, type: 3}
+  - {fileID: 4502802976982862949, guid: b18ce31eff837f14a92a6e363cb54cd4, type: 3}
+  - {fileID: 6458723624474111560, guid: a92513d529f06fe439a08a9c115131f0, type: 3}
+  - {fileID: 5465695009633159853, guid: 0c01ce4675abcf048be8cc8881568a69, type: 3}
+  - {fileID: 1405405940799102100, guid: 1d7fa7097b910944993a5b5e1cdce31b, type: 3}
+  - {fileID: 8659823476551815237, guid: ff12688f78d6bd34ab2ea343ed22fdfb, type: 3}
+  - {fileID: 5662882770356845682, guid: 8219c9df14b28dc4f8d32b803ab54730, type: 3}
+  - {fileID: 85043166575491648, guid: 0904b2027657ca74d91b0541b40fe691, type: 3}
+  - {fileID: 4489089537994357374, guid: 410033f42ab598441a68e4c53598ec8a, type: 3}
+  - {fileID: 2737781900834541514, guid: 79c6a0d78a1869344bed556a97d0e16b, type: 3}
+  vehicleCount: 40
+  respawnMinDistance: 70
+  despawnDistance: 90
+  roadSpeed: 13
+  straightThroughSpeed: 11
+  turnSpeed: 6
+  maxAcceleration: 2.5
+  comfortableBraking: 4
+  maxBraking: 9
+  minGap: 2.5
+  timeHeadway: 1.2
+  lookAhead: 60
+  greenTime: 12
+  yellowTime: 3
+  allRedTime: 1.5

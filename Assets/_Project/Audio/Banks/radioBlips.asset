@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 870817c183abc5e458946d63e766aed4, type: 3}
+  m_Name: radioBlips
+  m_EditorClassIdentifier: Assembly-CSharp::_Project.Audio.SoundBank
+  clips:
+  - {fileID: 8300000, guid: 0dfbb125524b78a4ba480fa7f389a9ca, type: 3}
+  - {fileID: 8300000, guid: e0c5e2829aeb29e4fb14129409bc8165, type: 3}
+  - {fileID: 8300000, guid: cdd3d3a0f1bf4ef40a3e14b407fda343, type: 3}
+  - {fileID: 8300000, guid: a601db463d5e3fa46b694343a267dee0, type: 3}
+  - {fileID: 8300000, guid: eaf424e9007881a448372a070c1f2412, type: 3}
+  - {fileID: 8300000, guid: 78bc681d9e6aa094493625102cfcc4e4, type: 3}
+  volume: 0.32
+  pitchRange: {x: 0.94, y: 1.08}

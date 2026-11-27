@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 870817c183abc5e458946d63e766aed4, type: 3}
+  m_Name: playerCheer
+  m_EditorClassIdentifier: Assembly-CSharp::_Project.Audio.SoundBank
+  clips:
+  - {fileID: 8300000, guid: c93a5c7a658c104469e98dc801d4c5c4, type: 3}
+  - {fileID: 8300000, guid: f07c1ee88b893da4ca37f23b4701cf57, type: 3}
+  - {fileID: 8300000, guid: 434daaae1505f9c48b01ec6a92f92777, type: 3}
+  - {fileID: 8300000, guid: 35927e7ef5c8b1240a6299d434046a93, type: 3}
+  - {fileID: 8300000, guid: 117bac6cae71dcf45a8ad1516e2baa78, type: 3}
+  - {fileID: 8300000, guid: decb6e89b0c235f4791297f18bf774bb, type: 3}
+  - {fileID: 8300000, guid: 7b8036827c5c09d4c850ecf47c34a4a5, type: 3}
+  - {fileID: 8300000, guid: a9eeacaeddfa024469103641b6c210d1, type: 3}
+  - {fileID: 8300000, guid: eaf789e8f8940e24dab7b3170db909ed, type: 3}
+  - {fileID: 8300000, guid: 7bfac830a07d2ef488db06fdbaf9cdbf, type: 3}
+  - {fileID: 8300000, guid: a6250f7843e65c544a2b81af88f5ba8d, type: 3}
+  - {fileID: 8300000, guid: 097207bb06c0d334c9af2d9c74b5fbe9, type: 3}
+  - {fileID: 8300000, guid: 6fc03ec982b4f7148bd33e276902e33c, type: 3}
+  - {fileID: 8300000, guid: f08b3c8ed99c8c248b14da344e6de437, type: 3}
+  - {fileID: 8300000, guid: af89cb08304e72c4b88c9a527daa44be, type: 3}
+  - {fileID: 8300000, guid: 1a1b4b31369579d4eabc0c1babef8bbe, type: 3}
+  - {fileID: 8300000, guid: 0048a9608b5c00c428d7c2e6464c4a04, type: 3}
+  - {fileID: 8300000, guid: fc39883a854a730468f6c951a83204c6, type: 3}
+  - {fileID: 8300000, guid: b9821c493acf6a24197fb60cba852d64, type: 3}
+  - {fileID: 8300000, guid: 008cfa529f7a72e4981949055b3d9b19, type: 3}
+  - {fileID: 8300000, guid: dc85cd8824b831f4ba72cb218c0f4520, type: 3}
+  - {fileID: 8300000, guid: 85cabd181e5385a44aa4250ddf001e8c, type: 3}
+  volume: 0.85
+  pitchRange: {x: 0.97, y: 1.05}

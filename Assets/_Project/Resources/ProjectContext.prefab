@@ -51,7 +51,7 @@ MonoBehaviour:
     _masterVolume: MasterVolume
     _musicVolume: MusicVolume
     _sfxVolume: SfxVolume
-  _sfxPoolSize: 12
+  _sfxPoolSize: 32
   _defaultMusicCrossfade: 1
   _defaultLoopingSfxFade: 0.1
 --- !u!1 &3819472658301947268
