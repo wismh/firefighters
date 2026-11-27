@@ -405,6 +405,65 @@ namespace _Project.Editor.City
         /// The fire truck the player starts in: in the outer lane of the street next to the player start, facing
         /// the traffic direction (right-hand traffic: driving +X keeps to -Z).
         /// </summary>
+        /// <summary>
+        /// The road direction (±X, ±Z) from <paramref name="node"/> closest to the way to the nearest burning
+        /// building: the mission sends the player there first. East when the scene has no fires.
+        /// </summary>
+        private static Vector3 TowardsNearestFire(Vector3 node)
+        {
+            var nearest = Vector3.zero;
+            var best = float.MaxValue;
+            foreach (var fire in Object.FindObjectsByType<BuildingFire>(FindObjectsSortMode.None))
+            {
+                // The building's collider, not its pivot: SimpleTown pivots sit at a corner.
+                var offset = fire.transform.parent.GetComponent<BoxCollider>().bounds.center - node;
+                offset.y = 0f;
+                if (offset.sqrMagnitude < best)
+                {
+                    best = offset.sqrMagnitude;
+                    nearest = offset;
+                }
+            }
+
+            if (best == float.MaxValue)
+            {
+                return Vector3.right;
+            }
+
+            Vector3[] roads = { Vector3.right, Vector3.left, Vector3.forward, Vector3.back };
+            var chosen = roads[0];
+            foreach (var road in roads)
+            {
+                if (Vector3.Dot(road, nearest) > Vector3.Dot(chosen, nearest))
+                {
+                    chosen = road;
+                }
+            }
+
+            return chosen;
+        }
+
+        [MenuItem("Tools/City/Aim Start Truck At First Fire")]
+        public static void AimStartTruck()
+        {
+            var truck = GameObject.Find("StartFireTruck");
+            AimStartTruck(truck.transform, AssetDatabase.LoadAssetAtPath<CityLayout>(CitySceneSetup.LayoutPath));
+            EditorSceneManager.MarkSceneDirty(truck.scene);
+            EditorSceneManager.SaveOpenScenes();
+        }
+
+        /// <summary>On the road out of the central crossing that leads towards the first call, in its right lane.</summary>
+        private static void AimStartTruck(Transform truck, CityLayout layout)
+        {
+            var node = layout.NodePosition(layout.blocksX / 2, layout.blocksZ / 2);
+            var forward = TowardsNearestFire(node);
+            var right = Vector3.Cross(Vector3.up, forward);
+            var position = node + forward * (CityLayout.HalfRoad + 16f) + right * CityLayout.LaneOffset +
+                           Vector3.up * (CityLayout.AsphaltHeight + 0.3f);
+            truck.SetPositionAndRotation(position, Quaternion.LookRotation(forward, Vector3.up));
+            Debug.Log($"[city] start truck faces {forward}");
+        }
+
         private static Vehicle PlaceStartTruck(CityLayout layout)
         {
             var old = GameObject.Find("StartFireTruck");
@@ -416,10 +475,7 @@ namespace _Project.Editor.City
             var prefab = AssetDatabase.LoadAssetAtPath<Vehicle>(FireTruckPrefab);
             var truck = (GameObject)PrefabUtility.InstantiatePrefab(prefab.gameObject);
             truck.name = "StartFireTruck";
-            var node = layout.NodePosition(layout.blocksX / 2, layout.blocksZ / 2);
-            var position = node + new Vector3(CityLayout.HalfRoad + 16f, CityLayout.AsphaltHeight + 0.3f,
-                -CityLayout.LaneOffset);
-            truck.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, 90f, 0f));
+            AimStartTruck(truck.transform, layout);
             var vehicle = truck.GetComponent<Vehicle>();
             var so = new SerializedObject(vehicle);
             so.FindProperty("parkedOnStart").boolValue = true;

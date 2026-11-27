@@ -151,7 +151,6 @@ namespace _Project.Comedy
         private float _reportUntil;
         private float _billPulse;
         private string _billText;
-        private string _statsText;
         private GUIStyle _style;
         private GUIStyle _shadow;
         private GUIStyle _hud;
@@ -694,10 +693,8 @@ namespace _Project.Comedy
 
         private void UpdateBillText()
         {
+            // During play only the total; the details wait for the report.
             _billText = $"Рахунок за збитки: ${_bill.Total:N0}";
-            _statsText = $"Врятовано: {_bill.BuildingsSaved}   Розбито: {_bill.PropsBroken}   " +
-                         $"Збито машин: {_bill.CarsKnockedOut}   Облито: {_bill.DriversSoaked + _bill.PedestriansSoaked}\n" +
-                         $"Прохожих у польоті: {_bill.PedestriansHit}";
             _billPulse = 1f;
         }
 
@@ -724,12 +721,6 @@ namespace _Project.Comedy
             var rect = new Rect(Screen.width * 0.5f - 300f, 10f, 600f, 34f);
             GUI.Label(new Rect(rect.x + 2f, rect.y + 2f, rect.width, rect.height), _billText, _hudShadow);
             GUI.Label(rect, _billText, _hud);
-            _hud.fontSize = 15;
-            _hudShadow.fontSize = 15;
-            _hud.normal.textColor = Color.white;
-            var stats = new Rect(Screen.width * 0.5f - 300f, 42f, 600f, 48f);
-            GUI.Label(new Rect(stats.x + 1f, stats.y + 1f, stats.width, stats.height), _statsText, _hudShadow);
-            GUI.Label(stats, _statsText, _hud);
 
             if (Time.time < _reportUntil)
             {

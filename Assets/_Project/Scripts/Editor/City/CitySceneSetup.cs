@@ -770,36 +770,85 @@ namespace _Project.Editor.City
                         var forward = dir.ToVector();
                         var right = dir.Right();
                         var position = node - forward * (CityLayout.HalfRoad + 1f) + right * SidewalkPropOffset;
-                        var towardRoad = -right;
                         var light = (GameObject)PrefabUtility.InstantiatePrefab(layout.trafficLight, parent);
                         light.name = $"Signal_{ix}_{iz}_{dir}";
-                        light.transform.SetPositionAndRotation(position,
-                            Quaternion.Euler(0f, YawToFace(layout.trafficLight, towardRoad), 0f));
+                        light.transform.SetPositionAndRotation(position, SignalRotation(dir));
                         AddCapsule(light, new Vector3(0f, 0f, -0.15f), 0.4f, 7.9f);
                         AddBox(light, new Vector3(0f, 7.1f, 0.2f), new Vector3(1.1f, 1.5f, 1f));
                         AddKnockable(light, 200f, 8f, 0.7f);
 
-                        var bounds = WorldBounds(light);
-                        var reach = Mathf.Max(0.6f, Vector3.Dot(bounds.center - position, towardRoad) * 2f - 0.6f);
-                        var lamp = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                        lamp.name = "Lamp";
-                        Object.DestroyImmediate(lamp.GetComponent<Collider>());
-                        lamp.transform.SetParent(light.transform, true);
-                        lamp.transform.position = position + towardRoad * reach + Vector3.up * (bounds.max.y - 1.2f) -
-                                                  forward * 0.4f;
-                        lamp.transform.localScale = Vector3.one * 0.7f;
-                        var lampRenderer = lamp.GetComponent<MeshRenderer>();
-                        lampRenderer.sharedMaterial = lampMaterial;
-                        lampRenderer.shadowCastingMode = ShadowCastingMode.Off;
-
                         var view = light.AddComponent<TrafficLightView>();
-                        view.Setup(new Vector2Int(ix, iz), dir, lampRenderer, light.GetComponent<KnockableProp>());
+                        view.Setup(new Vector2Int(ix, iz), dir, light.GetComponent<KnockableProp>());
+                        AddSignalLamps(view, lampMaterial);
                         views.Add(view);
                     }
                 }
             }
 
             return views;
+        }
+
+        /// <summary>
+        /// Puts a lamp disc into each of the three lenses of the signal head (traffic_light_mesh: lenses face local
+        /// +Z, 0.45 m square, recessed under their hoods), replacing any lamps it had.
+        /// </summary>
+        /// <summary>The head's lenses face local +Z: turned towards the cars that drive up to it.</summary>
+        private static Quaternion SignalRotation(GridDirection approach)
+        {
+            return Quaternion.LookRotation(-approach.ToVector(), Vector3.up);
+        }
+
+        internal static void AddSignalLamps(TrafficLightView view, Material material)
+        {
+            var root = view.transform;
+            for (var i = root.childCount - 1; i >= 0; i--)
+            {
+                var child = root.GetChild(i);
+                if (child.name.StartsWith("Lamp"))
+                {
+                    Object.DestroyImmediate(child.gameObject);
+                }
+            }
+
+            view.SetLamps(AddSignalLamp(root, "LampRed", 6.715f, material),
+                AddSignalLamp(root, "LampYellow", 6.155f, material),
+                AddSignalLamp(root, "LampGreen", 5.605f, material));
+            EditorUtility.SetDirty(view);
+        }
+
+        private static Renderer AddSignalLamp(Transform parent, string name, float height, Material material)
+        {
+            const float lensX = -0.015f;
+            // Just in front of the lens face (z 0.418), well behind the rim of its hood.
+            const float lensZ = 0.43f;
+            const float diameter = 0.4f;
+            var lamp = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            lamp.name = name;
+            Object.DestroyImmediate(lamp.GetComponent<Collider>());
+            lamp.transform.SetParent(parent, false);
+            lamp.transform.SetLocalPositionAndRotation(new Vector3(lensX, height, lensZ), Quaternion.Euler(90f, 0f, 0f));
+            lamp.transform.localScale = new Vector3(diameter, 0.004f, diameter);
+            var renderer = lamp.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return renderer;
+        }
+
+        [MenuItem("Tools/City/Rebuild Signal Lamps")]
+        public static void RebuildSignalLamps()
+        {
+            var material = EnsureSignalMaterial();
+            var views = Object.FindObjectsByType<TrafficLightView>(FindObjectsSortMode.None);
+            foreach (var view in views)
+            {
+                view.transform.rotation = SignalRotation(view.Approach);
+                AddSignalLamps(view, material);
+            }
+
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+            EditorSceneManager.SaveOpenScenes();
+            Debug.Log($"[city] signal lamps rebuilt on {views.Length} signals");
         }
 
         internal static Material EnsureFlatMaterial(string name, Color color)

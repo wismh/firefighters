@@ -19,6 +19,7 @@ namespace _Project.Editor.City
         private const string SettingsFolder = "Assets/_Project/Settings";
         private const string MaterialFolder = "Assets/_Project/Art/Materials";
         private const string VolumeProfilePath = SettingsFolder + "/CityVolumeProfile.asset";
+        private const string GlobalVolumeName = "Global Volume";
         private const string LightingSettingsPath = SettingsFolder + "/CityLightingSettings.lighting";
         private const string RendererPath = SettingsFolder + "/UniversalRenderer.asset";
         private const string SkyPath = MaterialFolder + "/CitySky.mat";
@@ -215,10 +216,12 @@ namespace _Project.Editor.City
 
             EditorUtility.SetDirty(profile);
 
-            var volume = Object.FindObjectsByType<Volume>(FindObjectsSortMode.None).FirstOrDefault(v => v.isGlobal);
+            // By name: the burning screen has a global volume of its own, which must keep its profile.
+            var volume = Object.FindObjectsByType<Volume>(FindObjectsSortMode.None)
+                .FirstOrDefault(v => v.isGlobal && v.name == GlobalVolumeName);
             if (volume == null)
             {
-                volume = new GameObject("Global Volume").AddComponent<Volume>();
+                volume = new GameObject(GlobalVolumeName).AddComponent<Volume>();
                 volume.isGlobal = true;
             }
 
