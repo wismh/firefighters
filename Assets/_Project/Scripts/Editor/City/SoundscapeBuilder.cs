@@ -18,8 +18,8 @@ namespace _Project.Editor.City
     /// </summary>
     public static class SoundscapeBuilder
     {
-        internal const string Generated = "Assets/_Project/Audio/Generated/";
-        private const string Sfx = "Assets/_Project/Audio/Sfx/";
+        internal const string Generated = ProjectPaths.GeneratedAudio;
+        private const string Sfx = ProjectPaths.Sfx;
         private const string DataFolder = Sfx + "Data";
         private const string BankFolder = "Assets/_Project/Audio/Banks";
         private const string Vocals = "Assets/HumanVocalsVol2";
@@ -98,7 +98,7 @@ namespace _Project.Editor.City
             }
 
             var soundscape = new GameObject("Soundscape").AddComponent<CitySoundscape>();
-            CitySceneSetup.SetRefs(soundscape, ("modes", modes), ("walker", walker), ("listener", cameraTransform),
+            CitySceneSetup.SetRefs(soundscape, ("listener", cameraTransform),
                 ("engine", Sound("engine", Generated + "Sfx/engine_loop.wav", 0.3f)),
                 ("siren", Sound("siren", Generated + "Sfx/siren_loop.wav", 0.1f)),
                 ("skid", Sound("skid", Generated + "Sfx/skid_loop.wav", 0.12f)),

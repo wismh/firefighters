@@ -1,16 +1,18 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using _Project.Bootstrap;
 using _Project.City;
+using _Project.Fire;
 using _Project.Player;
 using _Project.Traffic;
 using _Project.Vehicles;
-using UnityEditor;
 using UnityEditor.SceneManagement;
-using UnityEngine;
+using UnityEditor;
 using UnityEngine.InputSystem;
-using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering;
+using UnityEngine;
 using Zenject;
 
 namespace _Project.Editor.City
@@ -22,15 +24,15 @@ namespace _Project.Editor.City
     /// </summary>
     public static class CitySceneSetup
     {
-        private const string ConfigFolder = "Assets/_Project/Configurations/City";
+        private const string ConfigFolder = ProjectPaths.CityConfigurations;
         internal const string LayoutPath = ConfigFolder + "/CityLayout_Default.asset";
         private const string TrafficPath = ConfigFolder + "/TrafficSettings_Default.asset";
-        private const string MaterialFolder = "Assets/_Project/Art/Materials";
+        private const string MaterialFolder = ProjectPaths.Materials;
         private const string SignalMaterialPath = MaterialFolder + "/SignalLamp.mat";
         private const string DebrisMaterialPath = MaterialFolder + "/Debris.physicMaterial";
-        private const string ScenePath = "Assets/_Project/Scenes/MainScene.unity";
-        private const string InputPath = "Assets/_Project/InputSystem_Actions.inputactions";
-        private const string Town = "Assets/ThirdParty/SimpleTown/Prefabs/";
+        private const string ScenePath = ProjectPaths.MainScene;
+        private const string InputPath = ProjectPaths.InputActions;
+        private const string Town = ProjectPaths.SimpleTown;
         private const float BuildingSetback = 0.5f;
         private const float BuildingGap = 1f;
         private const float LampSpacing = 25f;
@@ -68,6 +70,7 @@ namespace _Project.Editor.City
             var network = CreateTraffic(layout, traffic, views);
             CreatePlayer(layout);
             CreateSceneContext();
+            HudBuilder.Apply();
             FireHoseBuilder.Apply(layout);
             MinimapBuilder.Apply(layout);
             ComedyBuilder.Apply();
@@ -955,7 +958,8 @@ namespace _Project.Editor.City
         {
             var contextObject = new GameObject("SceneContext");
             var installer = contextObject.AddComponent<CityInstaller>();
-            SetRefs(installer, ("inputActions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputPath)));
+            SetRefs(installer, ("inputActions", AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputPath)),
+                ("prices", EconomyBuilder.EnsurePrices()), ("listener", GameObject.FindWithTag("MainCamera").transform));
             var context = contextObject.AddComponent<SceneContext>();
             var so = new SerializedObject(context);
             var installers = so.FindProperty("_monoInstallers");
@@ -986,20 +990,8 @@ namespace _Project.Editor.City
         /// <summary>Shifts the object so its world bounds start at rectMin on X/Z. Tile pivots are at a corner.</summary>
         private static void AlignMin(GameObject instance, Vector2 rectMin)
         {
-            var bounds = WorldBounds(instance);
+            var bounds = EditorBounds.Of(instance);
             instance.transform.position += new Vector3(rectMin.x - bounds.min.x, 0f, rectMin.y - bounds.min.z);
-        }
-
-        private static Bounds WorldBounds(GameObject instance)
-        {
-            var renderers = instance.GetComponentsInChildren<Renderer>(true);
-            var bounds = renderers[0].bounds;
-            foreach (var r in renderers)
-            {
-                bounds.Encapsulate(r.bounds);
-            }
-
-            return bounds;
         }
 
         /// <summary>Yaw that turns the prefab's overhang (lamp arm, signal arm) toward the given direction.</summary>

@@ -15,7 +15,7 @@ namespace _Project.Editor.City
     {
         public const string Folder = "Assets/_Project/Art/Minimap";
         private const string TexturePath = Folder + "/CityMap.png";
-        private const string DataPath = "Assets/_Project/Configurations/City/MinimapData.asset";
+        private const string DataPath = ProjectPaths.Configurations + "/City/MinimapData.asset";
         private const int Resolution = 1024;
         // Room past the outer roads up to the invisible walls (25 m past the city edge).
         private const float Margin = 30f;

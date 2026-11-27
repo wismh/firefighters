@@ -9,7 +9,7 @@ namespace _Project.Editor.City
     /// </summary>
     public static class CityMaterialTuning
     {
-        private const string Folder = "Assets/ThirdParty";
+        private const string Folder = ProjectPaths.ThirdParty;
 
         private static readonly int SmoothnessId = Shader.PropertyToID("_Smoothness");
         private static readonly int GlossinessId = Shader.PropertyToID("_Glossiness");

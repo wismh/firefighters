@@ -17,7 +17,7 @@ namespace _Project.Editor.City
     public static class MissionBuilder
     {
         private const string ArtFolder = "Assets/_Project/Art/Radio";
-        private const string ScriptPath = "Assets/_Project/Configurations/Mission/MissionScript.asset";
+        private const string ScriptPath = ProjectPaths.Configurations + "/Mission/MissionScript.asset";
 
         private static readonly Color SpeakerColor = new Color(1f, 0.72f, 0.3f);
         private static readonly Color HintColor = new Color(0.85f, 0.88f, 0.95f);
@@ -53,13 +53,13 @@ namespace _Project.Editor.City
             var modes = Object.FindFirstObjectByType<PlayerModeController>();
             var cameraTransform = (Transform)new SerializedObject(modes).FindProperty("cameraTransform").objectReferenceValue;
 
-            var canvas = CreateCanvas();
+            // Over the minimap HUD.
+            var canvas = EditorUi.Canvas("MissionHUD", 11);
             var radio = CreateRadio(canvas, script);
             var targets = CreateTargets(canvas, cameraTransform.GetComponent<Camera>());
 
             var director = new GameObject("Mission").AddComponent<MissionDirector>();
-            CitySceneSetup.SetRefs(director, ("script", script), ("radio", radio), ("targets", targets),
-                ("modes", modes));
+            CitySceneSetup.SetRefs(director, ("script", script));
             Debug.Log("[city] mission set up");
         }
 
@@ -78,64 +78,50 @@ namespace _Project.Editor.City
             return script;
         }
 
-        private static RectTransform CreateCanvas()
-        {
-            var canvasGo = new GameObject("MissionHUD", typeof(RectTransform));
-            var canvas = canvasGo.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            // Over the minimap HUD.
-            canvas.sortingOrder = 11;
-            var scaler = canvasGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.5f;
-            return (RectTransform)canvasGo.transform;
-        }
-
         // ---------------------------------------------------------------- radio
 
         private static RadioView CreateRadio(RectTransform canvas, MissionScript script)
         {
-            var panel = Rect("Radio", canvas, new Vector2(740f, 196f));
+            var panel = EditorUi.Rect("Radio", canvas, new Vector2(740f, 196f));
             panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0f, 0.5f);
             panel.anchoredPosition = new Vector2(28f, 60f);
             var group = panel.gameObject.AddComponent<CanvasGroup>();
             group.interactable = false;
             group.blocksRaycasts = false;
-            var frame = AddImage(panel, Art("PanelFrame", 6), Color.white);
+            var frame = EditorUi.AddImage(panel, Art("PanelFrame", 6), Color.white);
             frame.type = Image.Type.Sliced;
             // Pixels of the frame drawn twice as large as the sprite's.
             frame.pixelsPerUnitMultiplier = 0.5f;
 
-            var portraitBox = Rect("PortraitBox", panel, new Vector2(168f, 168f));
+            var portraitBox = EditorUi.Rect("PortraitBox", panel, new Vector2(168f, 168f));
             portraitBox.anchorMin = portraitBox.anchorMax = portraitBox.pivot = new Vector2(0f, 0.5f);
             portraitBox.anchoredPosition = new Vector2(14f, 0f);
-            var portrait = AddImage(Rect("Portrait", portraitBox, new Vector2(156f, 156f)), Art("Dispatcher_Idle"),
+            var portrait = EditorUi.AddImage(EditorUi.Rect("Portrait", portraitBox, new Vector2(156f, 156f)), Art("Dispatcher_Idle"),
                 Color.white);
-            var noise = Rect("Static", portrait.rectTransform, Vector2.zero, true).gameObject.AddComponent<RawImage>();
+            var noise = EditorUi.Rect("Static", portrait.rectTransform, Vector2.zero, true).gameObject.AddComponent<RawImage>();
             noise.texture = Texture("Static");
             noise.color = new Color(1f, 1f, 1f, 0.05f);
             noise.uvRect = new UnityEngine.Rect(0f, 0f, 0.6f, 0.6f);
             noise.raycastTarget = false;
-            var portraitFrame = AddImage(Rect("Frame", portraitBox, Vector2.zero, true), Art("PortraitFrame", 6),
+            var portraitFrame = EditorUi.AddImage(EditorUi.Rect("Frame", portraitBox, Vector2.zero, true), Art("PortraitFrame", 6),
                 Color.white);
             portraitFrame.type = Image.Type.Sliced;
             portraitFrame.pixelsPerUnitMultiplier = 0.5f;
 
-            var speaker = AddText(Rect("Speaker", panel, new Vector2(520f, 28f)), 19, TextAnchor.UpperLeft);
-            Place(speaker.rectTransform, new Vector2(198f, -16f));
+            var speaker = EditorUi.AddText(EditorUi.Rect("Speaker", panel, new Vector2(520f, 28f)), 19, TextAnchor.UpperLeft);
+            EditorUi.Place(speaker.rectTransform, new Vector2(198f, -16f));
             speaker.fontStyle = FontStyle.Bold;
             speaker.color = SpeakerColor;
             speaker.text = $"{script.callSign} · {script.speakerName}";
 
-            var body = AddText(Rect("Body", panel, new Vector2(520f, 120f)), 23, TextAnchor.UpperLeft);
-            Place(body.rectTransform, new Vector2(198f, -48f));
+            var body = EditorUi.AddText(EditorUi.Rect("Body", panel, new Vector2(520f, 120f)), 23, TextAnchor.UpperLeft);
+            EditorUi.Place(body.rectTransform, new Vector2(198f, -48f));
             body.horizontalOverflow = HorizontalWrapMode.Wrap;
             body.verticalOverflow = VerticalWrapMode.Overflow;
             body.supportRichText = true;
             body.lineSpacing = 1.05f;
 
-            var hint = AddText(Rect("Hint", panel, new Vector2(440f, 22f)), 15, TextAnchor.LowerRight);
+            var hint = EditorUi.AddText(EditorUi.Rect("Hint", panel, new Vector2(440f, 22f)), 15, TextAnchor.LowerRight);
             hint.rectTransform.anchorMin = hint.rectTransform.anchorMax = hint.rectTransform.pivot = new Vector2(1f, 0f);
             hint.rectTransform.anchoredPosition = new Vector2(-16f, 10f);
             hint.color = HintColor;
@@ -165,19 +151,19 @@ namespace _Project.Editor.City
 
         private static TargetIndicator CreateTargets(RectTransform canvas, Camera viewCamera)
         {
-            var area = Rect("Targets", canvas, Vector2.zero, true);
-            var root = Rect("TargetTemplate", area, Vector2.zero);
+            var area = EditorUi.Rect("Targets", canvas, Vector2.zero, true);
+            var root = EditorUi.Rect("TargetTemplate", area, Vector2.zero);
             var group = root.gameObject.AddComponent<CanvasGroup>();
             group.interactable = false;
             group.blocksRaycasts = false;
 
-            var icon = Rect("Icon", root, new Vector2(46f, 46f));
-            AddImage(Rect("Backdrop", icon, new Vector2(58f, 58f)), MinimapSprites.Circle,
+            var icon = EditorUi.Rect("Icon", root, new Vector2(46f, 46f));
+            EditorUi.AddImage(EditorUi.Rect("Backdrop", icon, new Vector2(58f, 58f)), MinimapSprites.Circle,
                 new Color(0.08f, 0.1f, 0.16f, 0.75f));
-            AddImage(Rect("Flame", icon, Vector2.zero, true), MinimapSprites.Flame, Color.white);
-            var arrow = Rect("Arrow", root, new Vector2(22f, 22f));
-            AddImage(arrow, MinimapSprites.Pointer, PointerColor);
-            var distance = AddText(Rect("Distance", root, new Vector2(120f, 26f)), 19, TextAnchor.MiddleCenter);
+            EditorUi.AddImage(EditorUi.Rect("Flame", icon, Vector2.zero, true), MinimapSprites.Flame, Color.white);
+            var arrow = EditorUi.Rect("Arrow", root, new Vector2(22f, 22f));
+            EditorUi.AddImage(arrow, MinimapSprites.Pointer, PointerColor);
+            var distance = EditorUi.AddText(EditorUi.Rect("Distance", root, new Vector2(120f, 26f)), 19, TextAnchor.MiddleCenter);
             distance.rectTransform.anchoredPosition = new Vector2(0f, -44f);
             distance.fontStyle = FontStyle.Bold;
 
@@ -229,53 +215,6 @@ namespace _Project.Editor.City
             }
 
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-        }
-
-        private static void Place(RectTransform rect, Vector2 topLeft)
-        {
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
-            rect.anchoredPosition = topLeft;
-        }
-
-        private static RectTransform Rect(string name, Transform parent, Vector2 size, bool stretch = false)
-        {
-            var rect = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
-            rect.SetParent(parent, false);
-            if (stretch)
-            {
-                rect.anchorMin = Vector2.zero;
-                rect.anchorMax = Vector2.one;
-                rect.sizeDelta = Vector2.zero;
-            }
-            else
-            {
-                rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.one * 0.5f;
-                rect.sizeDelta = size;
-            }
-
-            return rect;
-        }
-
-        private static Image AddImage(RectTransform rect, Sprite sprite, Color color)
-        {
-            var image = rect.gameObject.AddComponent<Image>();
-            image.sprite = sprite;
-            image.color = color;
-            image.raycastTarget = false;
-            return image;
-        }
-
-        private static Text AddText(RectTransform rect, int size, TextAnchor alignment)
-        {
-            var text = rect.gameObject.AddComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            text.fontSize = size;
-            text.alignment = alignment;
-            text.color = Color.white;
-            text.raycastTarget = false;
-            text.horizontalOverflow = HorizontalWrapMode.Overflow;
-            rect.gameObject.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.85f);
-            return text;
         }
     }
 }

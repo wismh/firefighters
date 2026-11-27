@@ -13,8 +13,8 @@ namespace _Project.Editor.City
     public static class BurningBuilder
     {
         private const string ObjectName = "BurningScreen";
-        private const string MaterialPath = "Assets/_Project/Art/Materials/ScreenFire.mat";
-        private const string ProfilePath = "Assets/_Project/Settings/BurningVolumeProfile.asset";
+        private const string MaterialPath = ProjectPaths.Materials + "/ScreenFire.mat";
+        private const string ProfilePath = ProjectPaths.Settings + "/BurningVolumeProfile.asset";
         // Under the HUD (10), over the picture.
         private const int SortingOrder = 5;
 
@@ -60,9 +60,7 @@ namespace _Project.Editor.City
             volume.weight = 0f;
             volume.sharedProfile = EnsureProfile();
 
-            var walker = Object.FindFirstObjectByType<FirstPersonController>(FindObjectsInactive.Include);
-            CitySceneSetup.SetRefs(root.AddComponent<BurningView>(), ("overlay", overlay), ("volume", volume),
-                ("walker", walker));
+            CitySceneSetup.SetRefs(root.AddComponent<BurningView>(), ("overlay", overlay), ("volume", volume));
             EditorSceneManager.MarkSceneDirty(root.scene);
             Debug.Log("[city] burning screen set up");
         }

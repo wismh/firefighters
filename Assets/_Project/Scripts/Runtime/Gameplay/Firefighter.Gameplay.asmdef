@@ -1,0 +1,23 @@
+{
+    "name": "Firefighter.Gameplay",
+    "rootNamespace": "_Project",
+    "references": [
+        "Firefighter.Core",
+        "Firefighter.Generated",
+        "Zenject",
+        "MyToolkit.Runtime",
+        "Unity.InputSystem",
+        "UnityEngine.UI",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

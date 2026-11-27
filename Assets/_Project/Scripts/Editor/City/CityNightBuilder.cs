@@ -16,9 +16,9 @@ namespace _Project.Editor.City
     /// </summary>
     public static class CityNightBuilder
     {
-        private const string Materials = "Assets/_Project/Art/Materials";
+        private const string Materials = ProjectPaths.Materials;
         private const string NightMaterials = Materials + "/Night";
-        private const string LampPrefabPath = "Assets/_Project/Prefabs/StreetLampLight.prefab";
+        private const string LampPrefabPath = ProjectPaths.Prefabs + "/StreetLampLight.prefab";
         private const string LampChild = "LampLight";
         private const string SystemName = "StreetLamps";
 

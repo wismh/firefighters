@@ -17,7 +17,7 @@ namespace _Project.Editor.City
     /// </summary>
     public static class VehiclePrefabBuilder
     {
-        public const string OutputFolder = "Assets/_Project/Prefabs/Vehicles";
+        public const string OutputFolder = ProjectPaths.Prefabs + "/Vehicles";
         private const string SourceFolder = "Assets/ThirdParty/SimpleTown/Prefabs/Vehicles/";
         private const float BaseMass = 1200f;
         private const float SuspensionDistance = 0.15f;

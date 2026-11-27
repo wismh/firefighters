@@ -1,12 +1,14 @@
 using System.Collections.Generic;
 using System.IO;
+using _Project.Bootstrap;
 using _Project.City;
 using _Project.Comedy;
+using _Project.Hazards;
 using _Project.Player;
 using MyToolkit.Audio;
 using MyToolkit.ParticleFx;
-using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityEditor;
 using UnityEngine;
 
 namespace _Project.Editor.City
@@ -18,13 +20,14 @@ namespace _Project.Editor.City
     /// </summary>
     public static class ComedyBuilder
     {
-        private const string Etfx = "Assets/ThirdParty/EpicToonFX/Prefabs/";
+        private const string Etfx = ProjectPaths.EpicToonFx + "Prefabs/";
         private const string Hovl = "Assets/ThirdParty/HovlStudio/Epic Toon VFX 2/Prefabs/";
         private const string StarTrail = "Assets/ThirdParty/ParticleTrails/Prefab/FX_ParticleTrail_Star.prefab";
-        private const string EtfxSound = "Assets/ThirdParty/EpicToonFX/Sound/";
-        private const string Sfx = "Assets/_Project/Audio/Sfx/";
+        private const string EtfxSound = ProjectPaths.EpicToonFx + "Sound/";
+        private const string Sfx = ProjectPaths.Sfx;
         private const string SoundFolder = Sfx + "Data";
-        private const string FxFolder = "Assets/_Project/Prefabs/Fx/Comedy";
+        private const string FxFolder = ProjectPaths.FxPrefabs + "/Comedy";
+        private const string ScriptPath = ProjectPaths.Configurations + "/Comedy/ComedyScript.asset";
 
         private readonly struct FxSource
         {
@@ -177,11 +180,10 @@ namespace _Project.Editor.City
             var modes = Object.FindFirstObjectByType<PlayerModeController>();
             var refs = new SerializedObject(modes);
             var cameraTransform = (Transform)refs.FindProperty("cameraTransform").objectReferenceValue;
-            var walker = (FirstPersonController)refs.FindProperty("walker").objectReferenceValue;
 
-            if (!cameraTransform.TryGetComponent<CameraFeel>(out var feel))
+            if (!cameraTransform.TryGetComponent<CameraFeel>(out _))
             {
-                feel = cameraTransform.gameObject.AddComponent<CameraFeel>();
+                cameraTransform.gameObject.AddComponent<CameraFeel>();
             }
 
             var old = GameObject.Find("Comedy");
@@ -192,9 +194,10 @@ namespace _Project.Editor.City
 
             var root = new GameObject("Comedy");
             var director = root.AddComponent<ComedyDirector>();
-            var trail = CreateTrail(root.transform);
-            CitySceneSetup.SetRefs(director, ("modes", modes), ("walker", walker), ("feel", feel),
-                ("viewCamera", cameraTransform.GetComponent<Camera>()), ("flightTrail", trail));
+            CreateTrail(root.transform).gameObject.AddComponent<FlightTrail>();
+            new GameObject("HydrantGeysers").AddComponent<HydrantGeysers>().transform.SetParent(root.transform, false);
+            CitySceneSetup.SetRefs(director, ("viewCamera", cameraTransform.GetComponent<Camera>()),
+                ("script", EnsureScript()));
 
             var so = new SerializedObject(director);
             var sounds = so.FindProperty("sounds");
@@ -203,7 +206,7 @@ namespace _Project.Editor.City
             SetSound(sounds, "smallCrash", EtfxSound + "etfx_explosion_bullet.wav", 0.5f, 0.9f, 1.2f);
             SetSound(sounds, "propDown", EtfxSound + "etfx_explosion_poof.wav", 0.8f, 0.9f, 1.15f);
             // Generated (Tools/Audio/gen_sfx.py): a bonk and tweeting birds, not a "you lose" jingle.
-            SetSound(sounds, "knockout", "Assets/_Project/Audio/Generated/Sfx/knockout_dizzy.wav", 0.6f, 0.95f, 1.08f);
+            SetSound(sounds, "knockout", ProjectPaths.GeneratedAudio + "Sfx/knockout_dizzy.wav", 0.6f, 0.95f, 1.08f);
             SetSound(sounds, "geyser", EtfxSound + "etfx_explosion_liquid.wav", 1f, 0.8f, 0.9f);
             SetSound(sounds, "coins", Sfx + "SFX_CoinsGranted.wav", 0.8f, 1f, 1f);
             SetSound(sounds, "buildingSaved", Sfx + "SFX_VictoryInRound.wav", 0.8f, 1f, 1f);
@@ -211,6 +214,22 @@ namespace _Project.Editor.City
             SetSound(sounds, "firework", EtfxSound + "etfx_explosion_sparkle2.wav", 0.7f, 0.85f, 1.15f);
             so.ApplyModifiedPropertiesWithoutUndo();
             SoundscapeBuilder.ApplyComedySounds(director);
+        }
+
+        /// <summary>The comedy lines asset; created with the default lines, kept with any edits on a re-run.</summary>
+        private static ComedyScript EnsureScript()
+        {
+            var script = AssetDatabase.LoadAssetAtPath<ComedyScript>(ScriptPath);
+            if (script != null)
+            {
+                return script;
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(ScriptPath));
+            script = ScriptableObject.CreateInstance<ComedyScript>();
+            AssetDatabase.CreateAsset(script, ScriptPath);
+            AssetDatabase.SaveAssets();
+            return script;
         }
 
         private static void SetSound(SerializedProperty sounds, string field, string clipPath, float volume,

@@ -1,12 +1,14 @@
 using System.IO;
 using System.Linq;
+using _Project.Bootstrap;
 using _Project.City;
+using _Project.Fire;
 using _Project.FireHose;
 using _Project.Player;
 using _Project.Vehicles;
 using MyToolkit.ParticleFx;
-using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityEditor;
 using UnityEngine;
 
 namespace _Project.Editor.City
@@ -18,14 +20,14 @@ namespace _Project.Editor.City
     /// </summary>
     public static class FireHoseBuilder
     {
-        private const string Fx = "Assets/ThirdParty/EpicToonFX/";
+        private const string Fx = ProjectPaths.EpicToonFx;
         private const string MuzzleFlash = Fx + "Prefabs/Combat/Muzzleflash/LiquidMuzzle/LiquidMuzzleWater.prefab";
         private const string GroundSplashSource = Fx + "Prefabs/Environment/Water/Flowing/Sharp/WaterSplashSharp.prefab";
         private const string WallSplashSource = Fx + "Prefabs/Combat/Explosions/LiquidExplosion/LiquidExplosionWater.prefab";
         internal const string SoftGlow = Fx + "Materials/Basics/glow1_AB.mat";
         internal const string StretchyDrop = Fx + "Materials/Basics/circlestretchy_AB.mat";
         private const string WaterBody = Fx + "Materials/Misc/Liquid/water_3x3.mat";
-        private const string FxFolder = "Assets/_Project/Prefabs/Fx";
+        private const string FxFolder = ProjectPaths.FxPrefabs;
         private const string NozzlePrefab = FxFolder + "/HoseNozzle.prefab";
         private const string FireTruckPrefab = VehiclePrefabBuilder.OutputFolder + "/Vehicle_fire_truck.prefab";
         private const int IgnoreRaycastLayer = 2;

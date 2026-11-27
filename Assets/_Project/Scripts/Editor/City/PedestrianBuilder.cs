@@ -24,8 +24,8 @@ namespace _Project.Editor.City
         private const string BodyMaterial = Pack + "Materials/Stickman-Material.mat";
         private const string ClipFolder = "Assets/_Project/Art/Animations/Pedestrians/";
         private const string ControllerPath = ClipFolder + "Pedestrian.controller";
-        private const string GhostMaterialPath = "Assets/_Project/Art/Materials/Ghost.mat";
-        private const string PrefabFolder = "Assets/_Project/Prefabs/Pedestrians";
+        private const string GhostMaterialPath = ProjectPaths.Materials + "/Ghost.mat";
+        private const string PrefabFolder = ProjectPaths.Prefabs + "/Pedestrians";
         private const string GhostMesh = "Monster-0";
         private const string Bone = "mixamorig:";
         private const string LayerName = "Pedestrian";
@@ -93,7 +93,7 @@ namespace _Project.Editor.City
             var system = new GameObject("Pedestrians").AddComponent<PedestrianSystem>();
             var modes = Object.FindFirstObjectByType<PlayerModeController>();
             var camera = (Transform)new SerializedObject(modes).FindProperty("cameraTransform").objectReferenceValue;
-            CitySceneSetup.SetRefs(system, ("modes", modes), ("viewCamera", camera.GetComponent<Camera>()));
+            CitySceneSetup.SetRefs(system, ("viewCamera", camera.GetComponent<Camera>()));
             var ghosts = new List<Object>();
             for (var i = 0; i < GhostCount; i++)
             {

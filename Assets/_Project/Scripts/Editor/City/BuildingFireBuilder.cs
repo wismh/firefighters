@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using _Project.City;
+using _Project.Fire;
 using _Project.FireHose;
-using UnityEditor;
 using UnityEditor.SceneManagement;
-using UnityEngine;
+using UnityEditor;
 using UnityEngine.Rendering;
+using UnityEngine;
 
 namespace _Project.Editor.City
 {
@@ -19,15 +20,15 @@ namespace _Project.Editor.City
     /// </summary>
     public static class BuildingFireBuilder
     {
-        private const string Fx = "Assets/ThirdParty/EpicToonFX/Prefabs/Environment/";
+        private const string Fx = ProjectPaths.EpicToonFx + "Prefabs/Environment/";
         private const string GroundFire = Fx + "Fire/Cartoon/Field Intense/FireFieldIntenseRed.prefab";
         private const string TallFire = Fx + "Fire/Soft/SoftTallFire/SoftTallFireRed.prefab";
         private const string BodyFire = Fx + "Fire/Soft/SoftFireBig/SoftFireBigRed.prefab";
         private const string SmokeColumn = Fx + "Smoke/Dark/SmokeDark.prefab";
         private const string SmokeSoft = Fx + "Smoke/Dark/SmokeDarkSoft.prefab";
         private const string Embers = Fx + "Fireflies/FireFliesRed.prefab";
-        private const string Materials = "Assets/ThirdParty/EpicToonFX/Materials/";
-        private const string OwnMaterials = "Assets/_Project/Art/Materials/";
+        private const string Materials = ProjectPaths.EpicToonFx + "Materials/";
+        private const string OwnMaterials = ProjectPaths.Materials + "/";
 
         // Against a bright daytime sky additive flames burn out to white under HDR and bloom, so the
         // flames use alpha-blended copies (they stay orange) and the glows a dimmer additive copy.
@@ -84,7 +85,7 @@ namespace _Project.Editor.City
             fireLight.shadows = LightShadows.None;
 
             var fire = root.gameObject.AddComponent<BuildingFire>();
-            var flames = ReachableFlames(fire, CollectFlames(root, roofFlames), WorldBounds(renderers));
+            var flames = ReachableFlames(fire, CollectFlames(root, roofFlames), EditorBounds.Of(renderers));
             fire.Setup(fireLight, renderers, flames, Systems(root, SmokeColumn, SmokeSoft), Systems(root, Embers),
                 EnsureCharredMaterial());
         }
@@ -209,17 +210,6 @@ namespace _Project.Editor.City
 
             Debug.Log($"[city] {fire.transform.parent.name}: {kept.Count}/{flames.Length} flames reachable by the hose");
             return kept.ToArray();
-        }
-
-        private static Bounds WorldBounds(IReadOnlyList<Renderer> renderers)
-        {
-            var bounds = renderers[0].bounds;
-            foreach (var r in renderers)
-            {
-                bounds.Encapsulate(r.bounds);
-            }
-
-            return bounds;
         }
 
         /// <summary>Every flame effect under the fire root, with the scale it was placed at.</summary>

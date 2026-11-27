@@ -16,8 +16,8 @@ namespace _Project.Editor.City
     /// </summary>
     public static class CityLightingSetup
     {
-        private const string SettingsFolder = "Assets/_Project/Settings";
-        private const string MaterialFolder = "Assets/_Project/Art/Materials";
+        private const string SettingsFolder = ProjectPaths.Settings;
+        private const string MaterialFolder = ProjectPaths.Materials;
         private const string VolumeProfilePath = SettingsFolder + "/CityVolumeProfile.asset";
         private const string GlobalVolumeName = "Global Volume";
         private const string LightingSettingsPath = SettingsFolder + "/CityLightingSettings.lighting";
