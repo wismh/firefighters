@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using _Project.Audio;
 using _Project.City;
 using _Project.FireHose;
+using _Project.Mission;
 using _Project.Pedestrians;
 using _Project.Player;
 using _Project.Traffic;
@@ -117,7 +118,6 @@ namespace _Project.Comedy
         [SerializeField] private float waterForce = 5000f;
         [SerializeField] private float waterMaxAcceleration = 10f;
 
-        private readonly DamageBill _bill = new DamageBill();
         private readonly FloatingTexts _texts = new FloatingTexts();
         private readonly List<Geyser> _geysers = new List<Geyser>(8);
         private readonly Collider[] _overlap = new Collider[32];
@@ -134,6 +134,8 @@ namespace _Project.Comedy
         private List<KnockableProp> _props;
         private PedestrianSystem _pedestrians;
         private BurningView _burning;
+        private DamageBill _bill;
+        private MissionDirector _mission;
         private float _nextBurningLine;
         private float _nextBurningShake;
         private float _nextScaredLine;
@@ -164,7 +166,7 @@ namespace _Project.Comedy
         [Inject]
         public void Construct(IParticleFxSpawnService<ComedyFxId> fx, ISfxPlayer sfx, TrafficSystem traffic,
             FireService fires, WaterNozzle nozzle, List<KnockableProp> props, PedestrianSystem pedestrians,
-            BurningView burning)
+            BurningView burning, DamageBill bill, MissionDirector mission)
         {
             _fx = fx;
             _sfx = sfx;
@@ -174,6 +176,8 @@ namespace _Project.Comedy
             _props = props;
             _pedestrians = pedestrians;
             _burning = burning;
+            _bill = bill;
+            _mission = mission;
         }
 
         private void Start()
@@ -192,6 +196,8 @@ namespace _Project.Comedy
             _pedestrians.Soaked += OnPedestrianSoaked;
             _pedestrians.GhostAppeared += OnGhostAppeared;
             _burning.CaughtFire += OnCaughtFire;
+            _mission.AllFiresOut += OnAllFiresOut;
+            _mission.Completed += OnMissionCompleted;
             modes.JumpedOut += OnJumpedOut;
             modes.VehicleEntered += OnVehicleEntered;
             modes.VehicleExited += OnVehicleExited;
@@ -217,6 +223,8 @@ namespace _Project.Comedy
             _pedestrians.Soaked -= OnPedestrianSoaked;
             _pedestrians.GhostAppeared -= OnGhostAppeared;
             _burning.CaughtFire -= OnCaughtFire;
+            _mission.AllFiresOut -= OnAllFiresOut;
+            _mission.Completed -= OnMissionCompleted;
             modes.JumpedOut -= OnJumpedOut;
             modes.VehicleEntered -= OnVehicleEntered;
             modes.VehicleExited -= OnVehicleExited;
@@ -454,12 +462,19 @@ namespace _Project.Comedy
             Play(sounds.crowdCheer, top, 1f, true);
             Play(sounds.crowdCheer, top, 0.8f, true);
             _texts.Add(top + Vector3.up * 5f, "ВРЯТОВАНО!", GoodColor, 1.4f);
-            if (_fires.Burning == 0)
-            {
-                _finaleLeft = FinaleFireworks;
-                _finaleTimer = 1f;
-                Play(sounds.allSaved, top, 1f, true);
-            }
+        }
+
+        private void OnAllFiresOut()
+        {
+            _finaleLeft = FinaleFireworks;
+            _finaleTimer = 1f;
+            Play(sounds.allSaved, modes.MapFocus.position, 1f, true);
+        }
+
+        // The report comes after the dispatcher's closing words.
+        private void OnMissionCompleted()
+        {
+            _reportUntil = Time.time + ReportDuration;
         }
 
         private void Update()
@@ -651,10 +666,6 @@ namespace _Project.Comedy
             var position = focus + new Vector3(around.x, Random.Range(16f, 26f), around.y);
             _fx.SpawnParticle(Pick(Fireworks), position);
             Play(sounds.firework, position, 0.8f, true);
-            if (_finaleLeft == 0)
-            {
-                _reportUntil = Time.time + ReportDuration;
-            }
         }
 
         private void Play(SoundData sound, Vector3 at, float volume = 1f, bool everywhere = false)
@@ -729,7 +740,7 @@ namespace _Project.Comedy
         private void DrawReport()
         {
             const float width = 560f;
-            const float height = 250f;
+            const float height = 290f;
             var box = new Rect((Screen.width - width) * 0.5f, (Screen.height - height) * 0.4f, width, height);
             GUI.Box(box, GUIContent.none);
             GUI.Box(box, GUIContent.none);
@@ -751,6 +762,9 @@ namespace _Project.Comedy
             _style.fontSize = 15;
             _style.normal.textColor = new Color(1f, 1f, 1f, 0.7f);
             GUI.Label(new Rect(box.x, y + 140f, width, 24f), Verdict(), _style);
+            _style.fontSize = 20;
+            _style.normal.textColor = GoodColor;
+            GUI.Label(new Rect(box.x, y + 172f, width, 30f), "Тестове завдання: ЗАРАХОВАНО", _style);
         }
 
         private string Verdict()

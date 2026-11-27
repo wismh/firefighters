@@ -1,6 +1,6 @@
 """Procedural sound effects for the city: loops (engine, siren, hose, fire, steam, skid, ambience) and one-shots.
 
-Run: python Tools/Audio/gen_sfx.py  -> writes Assets/_Project/Audio/Generated/Sfx/*.wav (44.1 kHz, 16-bit mono).
+Run: python Tools/Audio/gen_sfx.py [radio]  -> writes Assets/_Project/Audio/Generated/Sfx/*.wav (44.1 kHz, 16-bit mono).
 Every loop is seamless: built from whole periods or crossfaded end-into-start.
 """
 import os
@@ -306,7 +306,63 @@ def boing():
     save("boing", x)
 
 
+# ---------------------------------------------------------------- dispatcher radio
+
+def radio_band(x):
+    """A handheld radio: narrow band, a little crunch."""
+    x = bandpass(x, 380, 3200, order=3)
+    return np.tanh(x / (np.abs(x).max() + 1e-9) * 2.2)
+
+
+def radio_open():
+    # Key-up: a click, a burst of squelch that dies down, then a short carrier tone.
+    n = int(SR * 0.32)
+    t = np.arange(n) / SR
+    click = np.zeros(n)
+    click[:int(SR * 0.004)] = rng.standard_normal(int(SR * 0.004)) * 2
+    hiss = bandpass(white(n), 900, 5200) * np.exp(-t / 0.07) * 0.9
+    tone = np.sin(2 * np.pi * 1450 * t) * ((t > 0.08) & (t < 0.15)) * 0.35
+    save("radio_open", radio_band(click + hiss + tone), 0.6)
+
+
+def radio_close():
+    # Release: a squelch tail and the two-tone "roger" beep.
+    n = int(SR * 0.36)
+    t = np.arange(n) / SR
+    hiss = bandpass(white(n), 900, 5200) * np.exp(-np.maximum(t - 0.12, 0) / 0.05) * (t > 0.12) * 0.8
+    beep = (np.sin(2 * np.pi * 1200 * t) * (t < 0.055) + np.sin(2 * np.pi * 1600 * t) * ((t > 0.06) & (t < 0.11)))
+    save("radio_close", radio_band(beep * 0.6 + hiss), 0.55)
+
+
+VOWELS = {"a": (800, 1250), "o": (520, 900), "e": (550, 1900), "i": (330, 2300), "u": (380, 800)}
+
+
+def radio_blips():
+    # Mumbled syllables in a woman's voice through the radio: a glottal buzz shaped by two formants.
+    for k, (vowel, f0) in enumerate([("a", 215), ("o", 200), ("e", 230), ("i", 240), ("u", 195), ("a", 245)]):
+        seconds = 0.075 + rng.random() * 0.03
+        n = int(SR * seconds)
+        t = np.arange(n) / SR
+        pitch = f0 * (1 + 0.06 * np.sin(np.pi * t / seconds) - 0.05 * t / seconds)
+        phase = np.cumsum(pitch) / SR
+        buzz = signal.sawtooth(2 * np.pi * phase) + 0.15 * white(n)
+        f1, f2 = VOWELS[vowel]
+        voice = bandpass(buzz, f1 * 0.8, f1 * 1.2) + 0.6 * bandpass(buzz, f2 * 0.85, f2 * 1.15)
+        env = np.sin(np.pi * np.clip(t / seconds, 0, 1)) ** 0.7
+        save(f"radio_blip_{k + 1}", radio_band(voice * env) * env, 0.5)
+
+
+def radio():
+    radio_open()
+    radio_close()
+    radio_blips()
+
+
 if __name__ == "__main__":
+    import sys
+    if sys.argv[1:] == ["radio"]:
+        radio()
+        sys.exit()
     engine_loop()
     siren_loop()
     hose_loop()
@@ -322,3 +378,4 @@ if __name__ == "__main__":
     splash()
     horn()
     boing()
+    radio()

@@ -81,6 +81,8 @@ Shader "Project/Charred Building"
             // Set by BuildingFire: world position, and in w how hot the flame still is, 0..1.
             float4 _Flames[MAX_FLAMES];
             float _FlameCount;
+            // 0..1: how far the char has spread from the flames since the building caught fire.
+            float _CharGrow;
 
             struct Attributes
             {
@@ -192,6 +194,9 @@ Shader "Project/Charred Building"
                     float reach = saturate(1.0 - length(stretched) / (_CharRadius * 1.3));
                     heat = max(heat, reach * _Flames[i].w);
                 }
+
+                // Before the fire has spread the char is close around the flames: distances read as farther.
+                closest /= max(_CharGrow, 0.001);
 
                 float ragged = (Fbm(p * 0.9) - 0.5) * 2.0 * _EdgeNoise + (Noise(p * 6.0) - 0.5) * 0.25;
                 // Soot runs in vertical streaks.

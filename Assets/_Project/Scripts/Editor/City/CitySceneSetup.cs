@@ -75,6 +75,7 @@ namespace _Project.Editor.City
             CityNightBuilder.Apply();
             BurningBuilder.Apply();
             SoundscapeBuilder.Apply();
+            MissionBuilder.Apply();
             CityLightingSetup.Apply(true);
 
             EditorSceneManager.MarkSceneDirty(scene);

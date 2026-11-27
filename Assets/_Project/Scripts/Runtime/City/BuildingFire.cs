@@ -10,6 +10,8 @@ namespace _Project.City
     /// Every flame has a strength that water lowers around the point it lands on; a doused flame stays as weak
     /// as the water left it. A put-out flame catches again from a strong neighbour that nobody has touched, so
     /// a building has to be put out completely. Then the smoke turns pale, thins out and stops; the char stays.
+    /// A building starts dormant, with clean walls and nothing burning, until the mission calls <see cref="Ignite"/>;
+    /// then its flames grow from small to full over a few seconds.
     /// </summary>
     public sealed class BuildingFire : MonoBehaviour
     {
@@ -20,6 +22,7 @@ namespace _Project.City
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         private static readonly int FlamesId = Shader.PropertyToID("_Flames");
         private static readonly int FlameCountId = Shader.PropertyToID("_FlameCount");
+        private static readonly int CharGrowId = Shader.PropertyToID("_CharGrow");
 
         [SerializeField] private Light fireLight;
         [SerializeField] private Renderer[] charredRenderers;
@@ -72,6 +75,14 @@ namespace _Project.City
         [SerializeField] private float flameHeatRadius = 2.6f;
         [SerializeField] private float flameHeatHeight = 3.5f;
 
+        [Header("Ignition")]
+        [Tooltip("Seconds the flames take to grow to full strength after the building catches fire.")]
+        [SerializeField] private float igniteTime = 4f;
+        [Tooltip("Strength every flame starts at when the building catches fire.")]
+        [SerializeField] private float igniteStrength = 0.2f;
+        [Tooltip("Seconds the char takes to spread over the walls around the flames.")]
+        [SerializeField] private float charSpreadTime = 12f;
+
         [Header("Burn-out")]
         [SerializeField] private Color steamColor = new Color(0.86f, 0.86f, 0.84f, 0.6f);
         [SerializeField] private float steamTime = 4f;
@@ -85,14 +96,31 @@ namespace _Project.City
         private float _baseIntensity;
         private float _seed;
         private float _outTime;
+        private float _growUntil;
+        private float _charGrow;
+
+        /// <summary>Raised once, when the dormant building catches fire.</summary>
+        public event Action<BuildingFire> Ignited;
 
         /// <summary>Raised once, when the last flame goes out.</summary>
         public event Action<BuildingFire> Extinguished;
 
-        public bool IsBurning { get; private set; } = true;
+        /// <summary>Raised when a put-out flame catches again from a neighbour.</summary>
+        public event Action<BuildingFire> Reignited;
+
+        /// <summary>Not burning yet: waits for <see cref="Ignite"/>.</summary>
+        public bool IsDormant { get; private set; } = true;
+
+        public bool IsBurning { get; private set; }
 
         /// <summary>Average strength of the flames, 0..1.</summary>
-        public float Strength { get; private set; } = 1f;
+        public float Strength { get; private set; }
+
+        /// <summary>Flames still burning.</summary>
+        public int BurningFlames { get; private set; }
+
+        /// <summary>Top centre of the building itself, for markers.</summary>
+        public Vector3 Top { get; private set; }
 
         /// <summary>The building's bounds grown by the douse radius: water landing outside cannot reach a flame.</summary>
         public Bounds Area { get; private set; }
@@ -223,6 +251,7 @@ namespace _Project.City
                 CharMaterials(r);
             }
 
+            Top = new Vector3(area.center.x, area.max.y, area.center.z);
             area.Expand(douseRadius * 2f);
             Area = area;
 
@@ -230,9 +259,16 @@ namespace _Project.City
             _emberRates = BaseRates(embers);
             foreach (var flame in flames)
             {
-                flame.Strength = 1f;
                 flame.BaseRates = BaseRates(flame.systems);
+                // Dormant: nothing burns until Ignite.
+                flame.Strength = 1f;
+                SetStrength(flame, 0f);
+                Clear(flame.systems);
             }
+
+            Clear(smoke);
+            Clear(embers);
+            fireLight.enabled = false;
 
             for (var i = 0; i < flames.Length; i++)
             {
@@ -253,10 +289,32 @@ namespace _Project.City
             for (var i = 0; i < _shaderFlameCount; i++)
             {
                 var position = flames[i].root.position;
-                _shaderFlames[i] = new Vector4(position.x, position.y, position.z, 1f);
+                _shaderFlames[i] = new Vector4(position.x, position.y, position.z, 0f);
             }
 
             PushShaderFlames();
+        }
+
+        /// <summary>Sets the dormant building on fire; its flames grow to full strength over igniteTime.</summary>
+        public void Ignite()
+        {
+            if (!IsDormant)
+            {
+                return;
+            }
+
+            IsDormant = false;
+            IsBurning = true;
+            _growUntil = Time.time + igniteTime;
+            foreach (var flame in flames)
+            {
+                SetStrength(flame, igniteStrength);
+            }
+
+            Play(smoke);
+            Play(embers);
+            fireLight.enabled = true;
+            Ignited?.Invoke(this);
         }
 
         private void OnDestroy()
@@ -291,6 +349,11 @@ namespace _Project.City
                 _shaderFlames[i].w = Mathf.MoveTowards(_shaderFlames[i].w, flames[i].Strength, emberRate * dt);
             }
 
+            if (IsBurning)
+            {
+                _charGrow = Mathf.Min(1f, _charGrow + dt / charSpreadTime);
+            }
+
             PushShaderFlames();
         }
 
@@ -300,11 +363,17 @@ namespace _Project.City
             {
                 material.SetVectorArray(FlamesId, _shaderFlames);
                 material.SetFloat(FlameCountId, _shaderFlameCount);
+                material.SetFloat(CharGrowId, _charGrow);
             }
         }
 
         private void Update()
         {
+            if (IsDormant)
+            {
+                return;
+            }
+
             UpdateEmbers(Time.deltaTime);
             if (!IsBurning)
             {
@@ -325,12 +394,20 @@ namespace _Project.City
 
             // The last scraps are not worth hunting for: once only weak flames are left, they go out by themselves.
             var finishing = total / flames.Length < finishStrength && strongest <= finishFlameStrength;
+            BurningFlames = burning;
             var mark = burning <= markLastFlames;
             var dt = Time.deltaTime;
+            var growing = now < _growUntil;
             total = 0f;
             foreach (var flame in flames)
             {
-                if (flame.Strength > 0f && finishing)
+                // While catching fire a flame grows, unless the water is on it right now.
+                var dry = now - flame.LastWetTime > 0.5f;
+                if (growing && dry && flame.Strength > 0f)
+                {
+                    SetStrength(flame, flame.Strength + (1f - igniteStrength) / igniteTime * dt);
+                }
+                else if (flame.Strength > 0f && finishing)
                 {
                     SetStrength(flame, flame.Strength - finishRate * dt);
                 }
@@ -386,6 +463,7 @@ namespace _Project.City
             {
                 flame.ReigniteAt = 0f;
                 SetStrength(flame, reigniteStrength);
+                Reignited?.Invoke(this);
             }
         }
 
@@ -418,6 +496,7 @@ namespace _Project.City
         {
             IsBurning = false;
             Strength = 0f;
+            BurningFlames = 0;
             _outTime = Time.time;
             fireLight.enabled = false;
             foreach (var system in embers)
@@ -450,6 +529,22 @@ namespace _Project.City
             }
 
             enabled = false;
+        }
+
+        private static void Clear(ParticleSystem[] systems)
+        {
+            foreach (var system in systems)
+            {
+                system.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+        }
+
+        private static void Play(ParticleSystem[] systems)
+        {
+            foreach (var system in systems)
+            {
+                system.Play(false);
+            }
         }
 
         private static float[] BaseRates(ParticleSystem[] systems)

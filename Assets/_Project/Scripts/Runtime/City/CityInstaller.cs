@@ -1,5 +1,6 @@
 using _Project.Comedy;
 using _Project.FireHose;
+using _Project.Mission;
 using _Project.Pedestrians;
 using _Project.Player;
 using _Project.Traffic;
@@ -35,6 +36,8 @@ namespace _Project.City
             Container.Bind<BurningView>().FromComponentInHierarchy().AsSingle();
             Container.Bind<PedestrianSystem>().FromComponentInHierarchy().AsSingle();
             Container.Bind<KnockableProp>().FromComponentsInHierarchy().AsTransient();
+            Container.Bind<DamageBill>().AsSingle();
+            Container.Bind<MissionDirector>().FromComponentInHierarchy().AsSingle();
 
             var comedy = new ParticleFxPoolBinding<ComedyFxId>[comedyFx.Length];
             for (var i = 0; i < comedyFx.Length; i++)

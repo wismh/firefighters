@@ -10,6 +10,7 @@ namespace _Project.FireHose
     /// <summary>
     /// Knows every burning building and feeds them the hose water: each frame the water arrives, the fires
     /// whose area holds the landing point are doused there, and steam puffs where it hits a live flame.
+    /// Buildings start dormant; <see cref="Burning"/> counts only those on fire right now.
     /// </summary>
     public sealed class FireService : IInitializable, ITickable, IDisposable
     {
@@ -30,6 +31,9 @@ namespace _Project.FireHose
 
         /// <summary>Raised when a building is put out; carries the number still burning.</summary>
         public event Action<int> FireOut;
+
+        /// <summary>Raised when a dormant building catches fire.</summary>
+        public event Action<BuildingFire> BuildingIgnited;
 
         /// <summary>Raised when a building is put out, before <see cref="FireOut"/>.</summary>
         public event Action<BuildingFire> BuildingSaved;
@@ -55,9 +59,10 @@ namespace _Project.FireHose
 
         public void Initialize()
         {
-            Burning = _fires.Count;
             foreach (var fire in _fires)
             {
+                Burning += fire.IsBurning ? 1 : 0;
+                fire.Ignited += OnIgnited;
                 fire.Extinguished += OnExtinguished;
             }
         }
@@ -66,6 +71,7 @@ namespace _Project.FireHose
         {
             foreach (var fire in _fires)
             {
+                fire.Ignited -= OnIgnited;
                 fire.Extinguished -= OnExtinguished;
             }
         }
@@ -100,6 +106,12 @@ namespace _Project.FireHose
             _steamTimer = SteamInterval;
             var jitter = Vector3.ProjectOnPlane(UnityEngine.Random.insideUnitSphere * SteamJitter, hit.normal);
             _fx.SpawnParticle(WaterFxId.Steam, hit.point + hit.normal * 0.4f + jitter);
+        }
+
+        private void OnIgnited(BuildingFire fire)
+        {
+            Burning++;
+            BuildingIgnited?.Invoke(fire);
         }
 
         private void OnExtinguished(BuildingFire fire)

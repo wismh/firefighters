@@ -12,7 +12,8 @@ namespace _Project.Minimap
     /// The round minimap in the HUD. The baked city picture turns and slides under a fixed player arrow, so up on
     /// the map is always where the player looks. Burning buildings get a pulsing flame; one outside the circle is
     /// pinned to its edge with the distance. A put-out fire turns into white steam and fades away. On foot the
-    /// player's fire truck is shown too, since the hose has to go back on its reel.
+    /// player's fire truck is shown too, since the hose has to go back on its reel. A building that has not caught
+    /// fire yet is not shown.
     /// </summary>
     // After the cameras have moved for the frame (VehicleCamera follows in LateUpdate).
     [DefaultExecutionOrder(100)]
@@ -124,7 +125,8 @@ namespace _Project.Minimap
             float pulse)
         {
             var building = fire.Fire;
-            if (!building.IsBurning && Time.time - fire.OutTime > steamTime)
+            var gone = !building.IsBurning && Time.time - fire.OutTime > steamTime;
+            if (building.IsDormant || gone)
             {
                 fire.Marker.SetVisible(false);
                 return;

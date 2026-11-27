@@ -1,5 +1,6 @@
 using _Project.City;
 using _Project.FireHose;
+using _Project.Mission;
 using _Project.Traffic;
 using _Project.Vehicles;
 using UnityEngine;
@@ -51,8 +52,7 @@ namespace _Project.Player
 
         private PlayerInputs _inputs;
         private TrafficSystem _traffic;
-        private FireService _fires;
-        private string _fireText;
+        private MissionDirector _mission;
         private Vehicle _vehicle;
         private Vehicle _runaway;
         private float _runawayTime;
@@ -92,11 +92,11 @@ namespace _Project.Player
         public Vehicle FireTruck { get; private set; }
 
         [Inject]
-        public void Construct(PlayerInputs inputs, TrafficSystem traffic, FireService fires)
+        public void Construct(PlayerInputs inputs, TrafficSystem traffic, MissionDirector mission)
         {
             _inputs = inputs;
             _traffic = traffic;
-            _fires = fires;
+            _mission = mission;
         }
 
         private void Start()
@@ -107,18 +107,6 @@ namespace _Project.Player
             _traffic.SetFocus(walker.transform, onFootRadius, null);
             LockCursor(true);
             Enter(startVehicle);
-            _fires.FireOut += UpdateFireText;
-            UpdateFireText(_fires.Total);
-        }
-
-        private void OnDestroy()
-        {
-            _fires.FireOut -= UpdateFireText;
-        }
-
-        private void UpdateFireText(int burning)
-        {
-            _fireText = burning > 0 ? $"Пожежі: {burning} / {_fires.Total}" : "Усі пожежі згашено!";
         }
 
         private void Update()
@@ -398,7 +386,7 @@ namespace _Project.Player
             var style = GUI.skin.label;
             style.fontSize = 18;
             GUI.Label(new Rect(20f, Screen.height - 40f, 900f, 30f), HintText(), style);
-            GUI.Label(new Rect(20f, 16f, 400f, 30f), _fireText, style);
+            GUI.Label(new Rect(20f, 16f, 600f, 30f), _mission.Status, style);
             if (IsHosing)
             {
                 GUI.Label(new Rect(Screen.width * 0.5f - 5f, Screen.height * 0.5f - 13f, 20f, 26f), "+", style);

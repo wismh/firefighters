@@ -18,7 +18,7 @@ namespace _Project.Editor.City
     /// </summary>
     public static class SoundscapeBuilder
     {
-        private const string Generated = "Assets/_Project/Audio/Generated/";
+        internal const string Generated = "Assets/_Project/Audio/Generated/";
         private const string Sfx = "Assets/_Project/Audio/Sfx/";
         private const string DataFolder = Sfx + "Data";
         private const string BankFolder = "Assets/_Project/Audio/Banks";
@@ -155,7 +155,7 @@ namespace _Project.Editor.City
             sounds.FindPropertyRelative(field).objectReferenceValue = value;
         }
 
-        private static string[] Clips(string folder, string pattern)
+        internal static string[] Clips(string folder, string pattern)
         {
             var files = Directory.GetFiles(folder, pattern);
             for (var i = 0; i < files.Length; i++)
@@ -199,7 +199,7 @@ namespace _Project.Editor.City
             return result.ToArray();
         }
 
-        private static SoundData Sound(string name, string clipPath, float volume, float pitchMin = 1f,
+        internal static SoundData Sound(string name, string clipPath, float volume, float pitchMin = 1f,
             float pitchMax = 1f)
         {
             Directory.CreateDirectory(DataFolder);
@@ -225,7 +225,7 @@ namespace _Project.Editor.City
             return sound;
         }
 
-        private static SoundBank Bank(string name, float volume, float pitchMin, float pitchMax,
+        internal static SoundBank Bank(string name, float volume, float pitchMin, float pitchMax,
             params string[][] clipGroups)
         {
             Directory.CreateDirectory(BankFolder);

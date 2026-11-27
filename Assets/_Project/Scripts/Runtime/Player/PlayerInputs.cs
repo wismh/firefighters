@@ -38,6 +38,19 @@ namespace _Project.Player
 
         public void Initialize() => _map.Enable();
 
+        /// <summary>Turns the player's controls off and on, e.g. while the dispatcher speaks.</summary>
+        public void SetPlayerEnabled(bool enabled)
+        {
+            if (enabled)
+            {
+                _map.Enable();
+            }
+            else
+            {
+                _map.Disable();
+            }
+        }
+
         public void Dispose() => _map.Disable();
     }
 }
