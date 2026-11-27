@@ -20,6 +20,15 @@ namespace _Project.Player
         [SerializeField] private float mouseSensitivity = 0.12f;
         [SerializeField] private float stickLookSpeed = 160f;
 
+        [Header("Head bob")]
+        [Tooltip("Metres walked per step; the head dips once per step and sways side to side once per two.")]
+        [SerializeField] private float bobStride = 1.7f;
+        [SerializeField] private float bobHeight = 0.045f;
+        [SerializeField] private float bobSway = 0.03f;
+        [SerializeField] private float bobRoll = 0.5f;
+        [Tooltip("How fast the bob fades in when walking starts and out when it stops, per second.")]
+        [SerializeField] private float bobBlend = 6f;
+
         private PlayerInputs _inputs;
         private Vector3 _horizontalVelocity;
         private float _verticalVelocity;
@@ -28,6 +37,9 @@ namespace _Project.Player
         private float _pitch;
         private HoseRope _leash;
         private bool _leashed;
+        private Vector3 _pivotRest;
+        private float _bobPhase;
+        private float _bobWeight;
 
         public Transform CameraPivot => cameraPivot;
         public bool IsGrounded => character.isGrounded;
@@ -80,6 +92,11 @@ namespace _Project.Player
             _verticalVelocity = 0f;
         }
 
+        private void Awake()
+        {
+            _pivotRest = cameraPivot.localPosition;
+        }
+
         private void Update()
         {
             var dt = Time.deltaTime;
@@ -93,7 +110,8 @@ namespace _Project.Player
             // The tumble dies out as a few rolls from side to side.
             _tumble = Mathf.MoveTowards(_tumble, 0f, dt * 0.8f);
             var roll = Mathf.Sin(_tumble * 14f) * _tumble * tumbleAngle;
-            cameraPivot.localRotation = Quaternion.Euler(_pitch + Mathf.Abs(roll) * 0.4f, 0f, roll);
+            var bobRollAngle = ApplyHeadBob(dt);
+            cameraPivot.localRotation = Quaternion.Euler(_pitch + Mathf.Abs(roll) * 0.4f, 0f, roll + bobRollAngle);
 
             var move = _inputs.Move.ReadValue<Vector2>();
             var speed = _inputs.Sprint.IsPressed() ? sprintSpeed : walkSpeed;
@@ -117,6 +135,29 @@ namespace _Project.Player
 
             var horizontal = _leashed ? ApplyLeash(dt) : _horizontalVelocity;
             character.Move((horizontal + Vector3.up * _verticalVelocity) * dt);
+        }
+
+        /// <summary>
+        /// Moves the camera pivot with the steps: a dip per step and a sway per stride, grown with the walking speed and
+        /// faded out in the air and while sliding. Returns the roll that goes with the sway.
+        /// </summary>
+        private float ApplyHeadBob(float dt)
+        {
+            var speed = _horizontalVelocity.magnitude;
+            var walking = character.isGrounded && !_sliding;
+            var targetWeight = walking ? Mathf.Clamp(speed / walkSpeed, 0f, 1.4f) : 0f;
+            _bobWeight = Mathf.MoveTowards(_bobWeight, targetWeight, bobBlend * dt);
+            if (walking)
+            {
+                _bobPhase = Mathf.Repeat(_bobPhase + speed * dt * Mathf.PI / bobStride, Mathf.PI * 2f);
+            }
+
+            var sway = Mathf.Sin(_bobPhase);
+            // The head is highest between steps and drops as each foot lands.
+            var dip = Mathf.Abs(Mathf.Cos(_bobPhase)) - 0.5f;
+            var offset = new Vector3(sway * bobSway, dip * bobHeight * 2f, 0f);
+            cameraPivot.localPosition = _pivotRest + offset * _bobWeight;
+            return -sway * bobRoll * _bobWeight;
         }
 
         /// <summary>

@@ -40,6 +40,10 @@ namespace _Project.Editor.City
         private const float SignChance = 0.35f;
         private const float GantryChance = 0.3f;
         private const float GantrySpan = 17f;
+        // Outskirts rows: deep enough for flats and offices, narrow enough to leave the cinema and the mall out.
+        private const float OutskirtsDepth = 16f;
+        private const float OutskirtsMaxWidth = 21f;
+        private const float OutskirtsSkylineHeight = 16f;
         // Sign panels in SimpleTown face local -Z, like its buildings.
         private static readonly Vector3 SignFront = Vector3.back;
 
@@ -228,6 +232,7 @@ namespace _Project.Editor.City
                 }
             }
 
+            BuildOutskirts(layout, Child(city, "Outskirts"));
             BuildStreetProps(layout, props, random);
             BuildRoadSigns(layout, Child(city, "RoadSigns"));
             var views = BuildSignals(layout, signals);
@@ -273,14 +278,105 @@ namespace _Project.Editor.City
             ground.transform.localScale = new Vector3((size.x + margin * 2f) / 10f, 1f, (size.y + margin * 2f) / 10f);
             // The grass tile samples a texture atlas, so the big plane gets a flat colour instead.
             ground.GetComponent<MeshRenderer>().sharedMaterial = EnsureFlatMaterial("Ground", new Color(0.55f, 0.7f, 0.33f));
+        }
 
-            // Invisible walls keep the player and the cars inside the city.
-            var walls = Child(city, "Bounds");
-            var half = new Vector2(size.x * 0.5f + 25f, size.y * 0.5f + 25f);
-            AddWall(walls, center + new Vector3(half.x, 0f, 0f), new Vector3(1f, 40f, half.y * 2f));
-            AddWall(walls, center - new Vector3(half.x, 0f, 0f), new Vector3(1f, 40f, half.y * 2f));
-            AddWall(walls, center + new Vector3(0f, 0f, half.y), new Vector3(half.x * 2f, 40f, 1f));
-            AddWall(walls, center - new Vector3(0f, 0f, half.y), new Vector3(half.x * 2f, 40f, 1f));
+        /// <summary>
+        /// Closes the city with two rings of buildings across the outer road: a row of shops, flats and offices
+        /// facing the road, and a row of tall buildings behind it for the skyline. Each row stands shoulder to
+        /// shoulder, so there is no way out between them. A wall behind both rings is only a backstop for a car
+        /// thrown over the roofs; nobody walking can reach it.
+        /// </summary>
+        private static void BuildOutskirts(CityLayout layout, Transform parent)
+        {
+            // Own random stream, so the outskirts do not reshuffle the blocks.
+            var random = new System.Random(layout.seed + 15485);
+            var front = layout.downtownBuildings.Concat(layout.suburbBuildings).Distinct().Where(p =>
+            {
+                var s = FootprintAtYawZero(p);
+                return s.x <= OutskirtsMaxWidth && s.y <= OutskirtsDepth;
+            }).ToArray();
+            var skyline = front.Where(p => PrefabHeight(p) >= OutskirtsSkylineHeight).ToArray();
+
+            var size = layout.Size;
+            var h = CityLayout.HalfRoad;
+            var inner = new Rect(-h, -h, size.x + h * 2f, size.y + h * 2f);
+            var backInset = BuildingSetback + OutskirtsDepth + BuildingGap;
+            BuildRing(front, Child(parent, "Front"), random, inner, BuildingSetback);
+            BuildRing(skyline, Child(parent, "Skyline"), random, inner, backInset);
+
+            var walls = Child(parent, "Backstop");
+            var reach = backInset + OutskirtsDepth + 1f;
+            var outer = new Rect(inner.xMin - reach, inner.yMin - reach, inner.width + reach * 2f,
+                inner.height + reach * 2f);
+            AddWall(walls, new Vector3(outer.xMin, 0f, outer.center.y), new Vector3(1f, 60f, outer.height));
+            AddWall(walls, new Vector3(outer.xMax, 0f, outer.center.y), new Vector3(1f, 60f, outer.height));
+            AddWall(walls, new Vector3(outer.center.x, 0f, outer.yMin), new Vector3(outer.width, 60f, 1f));
+            AddWall(walls, new Vector3(outer.center.x, 0f, outer.yMax), new Vector3(outer.width, 60f, 1f));
+        }
+
+        /// <summary>
+        /// Four rows facing <paramref name="inner"/> from <paramref name="inset"/> metres out. The north and south
+        /// rows run through the corners and the east and west rows fill between their fronts, so the corners close.
+        /// </summary>
+        private static void BuildRing(GameObject[] pool, Transform parent, System.Random random, Rect inner,
+            float inset)
+        {
+            var reach = inset + OutskirtsDepth;
+            BuildTightRow(pool, parent, random, inner.xMin - reach, inner.xMax + reach,
+                (from, depth) => new Vector2(from, inner.yMin - inset - depth), 180f);
+            BuildTightRow(pool, parent, random, inner.xMin - reach, inner.xMax + reach,
+                (from, depth) => new Vector2(from, inner.yMax + inset), 0f);
+            BuildTightRow(pool, parent, random, inner.yMin - inset, inner.yMax + inset,
+                (from, depth) => new Vector2(inner.xMax + inset, from), 90f);
+            BuildTightRow(pool, parent, random, inner.yMin - inset, inner.yMax + inset,
+                (from, depth) => new Vector2(inner.xMin - inset - depth, from), 270f);
+        }
+
+        private delegate Vector2 TightRowPlacement(float from, float depth);
+
+        /// <summary>
+        /// Picks buildings until [from, to] is full, then spreads what is left over between them: with a few dozen
+        /// buildings in a row each joint stays far narrower than the player.
+        /// </summary>
+        private static void BuildTightRow(GameObject[] pool, Transform parent, System.Random random, float from,
+            float to, TightRowPlacement placement, float yaw)
+        {
+            var picked = new List<GameObject>();
+            var used = 0f;
+            while (true)
+            {
+                var room = to - from - used;
+                var fitting = pool.Where(p => FootprintAtYawZero(p).x <= room).ToList();
+                if (fitting.Count == 0)
+                {
+                    break;
+                }
+
+                var prefab = fitting[random.Next(fitting.Count)];
+                picked.Add(prefab);
+                used += FootprintAtYawZero(prefab).x;
+            }
+
+            var joint = picked.Count > 1 ? (to - from - used) / (picked.Count - 1) : 0f;
+            var cursor = from;
+            foreach (var prefab in picked)
+            {
+                var footprint = FootprintAtYawZero(prefab);
+                var building = Place(prefab, parent, placement(cursor, footprint.y), yaw);
+                building.AddComponent<BoxCollider>();
+                cursor += footprint.x + joint;
+            }
+        }
+
+        private static float PrefabHeight(GameObject prefab)
+        {
+            var bounds = prefab.GetComponentsInChildren<MeshFilter>(true)
+                .Select(f => f.sharedMesh.bounds).Aggregate((a, b) =>
+                {
+                    a.Encapsulate(b);
+                    return a;
+                });
+            return bounds.size.y * prefab.transform.localScale.y;
         }
 
         private static void AddWall(Transform parent, Vector3 position, Vector3 size)

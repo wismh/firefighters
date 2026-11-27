@@ -64,7 +64,9 @@ namespace _Project.Editor.City
             }
 
             var count = 0;
-            foreach (var renderer in GameObject.Find("City/Blocks").GetComponentsInChildren<MeshRenderer>(true))
+            var renderers = GameObject.Find("City/Blocks").GetComponentsInChildren<MeshRenderer>(true)
+                .Concat(GameObject.Find("City/Outskirts").GetComponentsInChildren<MeshRenderer>(true));
+            foreach (var renderer in renderers)
             {
                 var materials = renderer.sharedMaterials;
                 var changed = false;

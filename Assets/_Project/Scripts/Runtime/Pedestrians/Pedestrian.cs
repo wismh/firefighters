@@ -26,6 +26,8 @@ namespace _Project.Pedestrians
         private const float RestHeight = 1.5f;
         private const float MinRagdollSeconds = 1.6f;
         private const float MaxRagdollSeconds = 9f;
+        // No ragdoll part lies farther than this from the hips, in metres at scale 1, unless the joints gave way.
+        private const float TornApartDistance = 2.5f;
         private const float CrossChance = 0.35f;
         private const float DanceChance = 0.02f;
         // A crossing nobody can use (a wreck on it) is given up after this long.
@@ -53,6 +55,7 @@ namespace _Project.Pedestrians
 
         private Vector3 _hipsStart;
         private Quaternion[] _boneStart;
+        private Vector3[] _boneRest;
         private SidewalkGraph _graph;
         private SidewalkLink _link;
         private int _from;
@@ -223,6 +226,11 @@ namespace _Project.Pedestrians
         private void Awake()
         {
             _boneStart = new Quaternion[bones.Length];
+            _boneRest = new Vector3[bones.Length];
+            for (var i = 0; i < bones.Length; i++)
+            {
+                _boneRest[i] = bones[i].localPosition;
+            }
         }
 
         // After the animator: eases from the pose the body was lying in to the get-up animation.
@@ -393,6 +401,13 @@ namespace _Project.Pedestrians
         {
             var slow = ragdollBodies[0].linearVelocity.sqrMagnitude < RestSpeed * RestSpeed;
             var resting = _stateTime > MinRagdollSeconds && slow && hips.position.y < RestHeight;
+            // A ragdoll jammed into a wall can blow apart; the skinned mesh then stretches over the whole city.
+            if (IsTornApart())
+            {
+                BeginGetUp();
+                return;
+            }
+
             if ((resting || _stateTime > MaxRagdollSeconds) && !IsHaunted)
             {
                 BeginGetUp();
@@ -441,6 +456,21 @@ namespace _Project.Pedestrians
             _link = FindLink(_from, best);
         }
 
+        private bool IsTornApart()
+        {
+            var reach = TornApartDistance * transform.localScale.x;
+            var hipsPosition = hips.position;
+            for (var i = 0; i < ragdollBodies.Length; i++)
+            {
+                if ((ragdollBodies[i].position - hipsPosition).sqrMagnitude > reach * reach)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private void SetRagdoll(bool on)
         {
             animator.enabled = !on;
@@ -448,11 +478,25 @@ namespace _Project.Pedestrians
             for (var i = 0; i < ragdollBodies.Length; i++)
             {
                 ragdollBodies[i].isKinematic = !on;
+                // Interpolating a kinematic body writes stale physics poses over the animated bones.
+                ragdollBodies[i].interpolation = on ? RigidbodyInterpolation.Interpolate : RigidbodyInterpolation.None;
             }
 
             for (var i = 0; i < ragdollColliders.Length; i++)
             {
                 ragdollColliders[i].enabled = on;
+            }
+
+            if (on)
+            {
+                return;
+            }
+
+            // The humanoid animator drives only rotations (and the hips), so bone offsets the physics pulled
+            // apart would stay that way: put every bone back at its length.
+            for (var i = 0; i < bones.Length; i++)
+            {
+                bones[i].localPosition = _boneRest[i];
             }
         }
 
